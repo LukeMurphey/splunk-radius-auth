@@ -40,7 +40,7 @@ class RadiusAuthAppTest(unittest.TestCase):
         self.tmp_dir = tempfile.mkdtemp( prefix="splunk_radius_auth_test_" )
         
     def tearDown(self):
-        pass #shutil.rmtree( self.tmp_dir )
+        shutil.rmtree( self.tmp_dir )
 
 class TestRadiusAuth(RadiusAuthAppTest):
 
