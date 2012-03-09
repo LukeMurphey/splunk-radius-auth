@@ -530,7 +530,7 @@ def userLogin( args, out=sys.stdout, directory = None ):
     ra.loadConf(directory)
     
     # Try to perform the authentication
-    if ra.authenticate(username, password):
+    if ra.authenticate(username, password, directory=directory):
         out.write(SUCCESS)
         return 0
     else:
