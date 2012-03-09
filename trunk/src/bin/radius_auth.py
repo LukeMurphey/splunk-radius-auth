@@ -478,20 +478,25 @@ class RadiusAuth():
             # Get the roles
             if update_user_info and self.roles_key is not None:
                 
+                roles = []
+                
                 # Find the roles key if it exists
                 for k, v in reply.items():
                     
                     # Determine if this is the roles string
                     if str(k) == str(self.roles_key):
                         
-                        # Make a new user info object
-                        user = UserInfo( username, None, v[0].split(":"))
-                        
-                        # Save the user
-                        user.save(directory)
+                        # Parse out the roles
+                        roles = v[0].split(":")
                         
                         # Found what we needed, stop here
                         break
+                    
+                # Make a new user info object
+                user = UserInfo( username, None, roles)
+                        
+                # Save the user
+                user.save(directory)
             
         # Return the result
         return auth_suceeded
