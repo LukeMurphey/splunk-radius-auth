@@ -1,7 +1,6 @@
 import unittest
 
 import sys
-import ConfigParser
 import re
 import tempfile
 import shutil
@@ -13,21 +12,22 @@ from radius_auth import *
 
 class RadiusAuthAppTest(unittest.TestCase):
     
-    def loadConfig(self, file=None):
-        conf = ConfigParser.RawConfigParser()
+    def loadConfig(self, properties_file=None):
         
-        if file is None:
-            file = os.path.join( "..", "local.properties")
+        if properties_file is None:
+            properties_file = os.path.join( "..", "local.properties")
         
-        fp = open(file)
+        fp = open(properties_file)
         regex = re.compile("(?P<key>[^=]+)[=](?P<value>.*)")
         
         settings = {}
         
         for l in fp.readlines():
             r = regex.search(l)
-            d = r.groupdict()
-            settings[ d["key"] ] = d["value"]
+            
+            if r is not None:
+                d = r.groupdict()
+                settings[ d["key"] ] = d["value"]
         
         self.username = settings["value.test.radius.username"]
         self.password = settings["value.test.radius.password"]
