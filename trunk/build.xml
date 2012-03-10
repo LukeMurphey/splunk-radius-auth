@@ -25,7 +25,7 @@
           target: update_from_svn
          ================================= -->
     <target name="update_from_svn">
-        <taskdef name="svn" classpath="ant/svnant.jar;ant/svnClientAdapter.jar;ant/svnjavahl.jar" classname="org.tigris.subversion.svnant.SvnTask" />
+        <taskdef name="svn" classpath="ant/svnant.jar;ant/svnClientAdapter.jar;ant/svnjavahl.jar;ant/svnkit.jar" classname="org.tigris.subversion.svnant.SvnTask" />
         <svn>
             <update dir="${value.build.workingcopy.directory}" revision="HEAD" />
         </svn>
@@ -35,7 +35,7 @@
           target: get_build_number
          ================================= -->
     <target name="get_build_number">
-    	<taskdef name="svn" classpath="ant/svnant.jar;ant/svnClientAdapter.jar;ant/svnjavahl.jar" classname="org.tigris.subversion.svnant.SvnTask" />
+    	<taskdef name="svn" classpath="ant/svnant.jar;ant/svnClientAdapter.jar;ant/svnjavahl.jar;ant/svnkit.jar" classname="org.tigris.subversion.svnant.SvnTask" />
 
         <svn>
             <info target="${value.build.workingcopy.directory}" />
