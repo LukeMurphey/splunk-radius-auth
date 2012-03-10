@@ -108,7 +108,7 @@
     <target name="setup_tmp_directory_for_deployment">
         
         <!-- Create a reference to the directory to send the files to -->
-        <property name="export_dir" value="${value.deploy.splunk_home}/etc/apps/${value.build.appname}" />
+        <property name="export_dir" value="${value.deploy.splunk_home}/etc/apps/" />
     	
     	<!-- Make the app directory if it does not yet exist -->
     	<mkdir dir="${export_dir}" />
