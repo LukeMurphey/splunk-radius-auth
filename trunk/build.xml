@@ -71,11 +71,10 @@
     <target name="populate_export_dir">
     	
     	<!-- Copy the files over -->
-    	<copy todir="${export_dir}">
+    	<copy todir="${export_dir}/${value.build.appname}">
     	    <fileset dir="${value.src.directory}"/>
     	</copy>
 
-    	
     </target>
     	
     <!-- ================================= 
@@ -97,6 +96,9 @@
         
         <!-- Gzip the files -->
         <gzip src="${value.temp.tar_package.file}" destfile="${value.build.packageoutput.directory}/${value.build.appname}.tar.gz"/>
+    	
+    	<!-- Delete the temporary location so that old files do not get streamed in -->
+    	<delete dir="${value.temp.directory}" />
 
     </target>
 	
@@ -123,7 +125,7 @@
     <!-- ================================= 
           target: stop_splunk
          ================================= -->
-    <target name="stop_splunk">
+    <target name="stop_splunk" description="Stop Splunk">
         <exec executable="${value.deploy.splunk_home}/bin/splunk">
             <arg line="stop" />
             <arg line="--accept-license" />
@@ -133,7 +135,7 @@
     <!-- ================================= 
           target: start_splunk
          ================================= -->
-    <target name="start_splunk">
+    <target name="start_splunk" description="Start Splunk">
         <exec executable="${value.deploy.splunk_home}/bin/splunk">
             <arg line="start" />
             <arg line="--accept-license" />
@@ -143,7 +145,7 @@
     <!-- ================================= 
           target: restart_splunk
          ================================= -->
-    <target name="restart_splunk">
+    <target name="restart_splunk" description="Start Splunk">
         <exec executable="${value.deploy.splunk_home}/bin/splunk">
             <arg line="restart" />
             <arg line="--accept-license" />
@@ -153,7 +155,7 @@
     <!-- ================================= 
           target: restart_splunk_web
          ================================= -->
-    <target name="restart_splunk_web">
+    <target name="restart_splunk_web" description="Restart Splunk">
         <exec executable="${value.deploy.splunk_home}/bin/splunk">
             <arg line="restart" />
         	<arg line="splunkweb" />
