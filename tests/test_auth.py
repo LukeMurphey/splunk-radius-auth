@@ -184,7 +184,7 @@ class TestMainAuthMehods(RadiusAuthAppTest):
         
         # Make the local conf
         fp = open( os.path.join( self.tmp_dir, "local", CONF_FILE), "w" )
-        fp.write( "[%s]\nsecret=%s\n" % (self.server, self.secret) )
+        fp.write( "[default]\nserver=%s\n\nsecret=%s\n" % (self.server, self.secret) )
         fp.close()
         
         # Redirect output to a string so that we can test it
