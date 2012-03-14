@@ -305,8 +305,9 @@ class RadiusAuth():
     This class provides methods for authenticating to a RADIUS server and obtaining the necessary user information.
     """
     
-    RADIUS_IDENTIFIER="identifier"
-    RADIUS_SECRET="secret"
+    RADIUS_IDENTIFIER = "identifier"
+    RADIUS_SECRET     = "secret"
+    RADIUS_SERVER     = "server"
     
     def __init__(self, server = None, secret = None, identifier = None, roles_key="(0, 0)"):
         """
@@ -320,13 +321,30 @@ class RadiusAuth():
         # Set up the key that we will use to obtain the roles information
         self.roles_key = roles_key
         
-    def loadConfSettings( self, file, stanza = None ):
+    def checkValues(self):
+        """
+        Determine if the settings are valid. Throws a ValueError if a problem was found, does nothing otherwise.
+        """
+        
+        if self.server is None:
+            raise ValueError("The server cannot be none")
+        
+        if len(self.server.strip()) == 0:
+            raise ValueError("The server cannot be empty")
+        
+        if self.secret is None:
+            raise ValueError("The secret cannot be empty")
+        
+        if len(self.secret.strip()) == 0:
+            raise ValueError("The secret cannot be none")
+        
+    def loadConfSettings( self, file, stanza = "default" ):
         """
         Load the settings from the local conf files.
         
         Arguments:
         file -- The file to load the settings from
-        stanza -- The stanza to load; will load the first non-default stanza if the argument is set to none
+        stanza -- The stanza to load
         """
         
         # Try to open the file
@@ -347,30 +365,16 @@ class RadiusAuth():
         
         # Set the server instance to empty so that we don't generate an error if a server entry does not exist
         non_defaults = {}
-        server = None
         
         # Load the specific stanza if one is requested
         if stanza is not None and stanza is not "default":
             non_defaults = RadiusAuth.convertNVpairsToDict(conf.items(stanza))
-            server = stanza
-                
-        # Load the first non-default stanza otherwise
-        elif stanza is not "default":
-            
-            # Load in the server sections
-            for section in conf.sections():
-                
-                # Read in the server stanza
-                if section != "default":
-                    non_defaults = RadiusAuth.convertNVpairsToDict(conf.items(section))
-                    server = section
-                    break # We only handle a single entry thus far, so stop here
         
         # Combine the defaults and non-defaults
         settings = dict(defaults.items() + non_defaults.items())
         
         # Read in the server stanza
-        return server, settings
+        return settings
     
     def loadConf( self, directory = None ):
         """
@@ -385,19 +389,21 @@ class RadiusAuth():
             directory = os.path.join( os.environ["SPLUNK_HOME"], "etc", "apps", APP_NAME )
         
         # Load the default conf
-        server, default_conf = self.loadConfSettings( os.path.join(directory, "default", CONF_FILE), "default" )
+        default_settings = self.loadConfSettings( os.path.join(directory, "default", CONF_FILE), "default" )
         
         # Load the local conf
-        server, local_conf = self.loadConfSettings( os.path.join(directory, "local", CONF_FILE) )
+        local_settings = self.loadConfSettings( os.path.join(directory, "local", CONF_FILE), "default" )
         
         # Layer the conf files
-        combined = dict(default_conf.items() + local_conf.items())
+        combined = dict(default_settings.items() + local_settings.items())
         
         # Initialize the class
         self.identifier = combined.get(RadiusAuth.RADIUS_IDENTIFIER, None)
-        self.server = server
-        self.secret = combined.get(RadiusAuth.RADIUS_SECRET, None)
+        self.server     = combined.get(RadiusAuth.RADIUS_SERVER, None)
+        self.secret     = combined.get(RadiusAuth.RADIUS_SECRET, None)
         
+        # Check the values
+        self.checkValues()
         
     @staticmethod
     def convertNVpairsToDict( list ):
@@ -439,9 +445,28 @@ class RadiusAuth():
         # Otherwise, try loading it from the local directory
         return "dictionary"
     
+    def checkUsernameAndPassword(self, username, password):
+        """
+        Checks the username and password and throws an exception if one is empty or null.
+        """
+        
+        if username is None:
+            raise ValueError("The username cannot be none")
+        
+        if len(username.strip()) == 0:
+            raise ValueError("The username cannot be empty")
+        
+        if password is None:
+            raise ValueError("The password cannot be empty")
+        
+        if len(password.strip()) == 0:
+            raise ValueError("The password cannot be none")
+    
     def authenticate(self, username, password, update_user_info=True, directory=None ):
         """
         Perform an authentication attempt to the RADIUS server. Return true if the authentication succeeded.
+        
+        Throws a ValueError of the class is not ready to perform authentication of of the password or username fields are incorrect.
         
         Arguments:
         username -- The username to authenticate
@@ -449,6 +474,10 @@ class RadiusAuth():
         update_user_info -- Update the load user info for the user
         directory -- The directory where the user_info objects are to be stored
         """
+        
+        # Make sure that the class is ready
+        self.checkValues()
+        self.checkUsernameAndPassword(username, password)
         
         # Create a new connection to the server
         srv = Client(server=self.server, secret=self.secret, dict=Dictionary( RadiusAuth.getDictionaryFile() ))
