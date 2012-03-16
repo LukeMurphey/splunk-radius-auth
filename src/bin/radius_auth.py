@@ -5,9 +5,42 @@ from pyrad.dictionary import Dictionary
 import sys
 import getopt
 import os
-import ConfigParser
 import hashlib
 import json
+import logging
+import logging.handlers
+import re
+
+def setup_logger(level, name, use_rotating_handler=True):
+    """
+    Setup a logger for the REST handler.
+    
+    Arguments:
+    level -- The logging level to use
+    name -- The name of the logger to use
+    use_rotating_handler -- Indicates whether a rotating file handler ought to be used
+    """
+    
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+    
+    if 'SPLUNK_HOME' in os.environ:
+        logger.propagate = False # Prevent the log messages from being duplicated in the python.log file
+        
+        if use_rotating_handler:
+            file_handler = logging.handlers.RotatingFileHandler(os.environ['SPLUNK_HOME'] + '/var/log/splunk/radius_auth.log', maxBytes=25000000, backupCount=5)
+        else:
+            file_handler = logging.FileHandler(os.environ['SPLUNK_HOME'] + '/var/log/splunk/radius_auth.log')
+            
+        formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+        file_handler.setFormatter(formatter)
+        
+        logger.addHandler(file_handler)
+    
+    return logger
+
+# Setup the handler
+logger = setup_logger(logging.DEBUG, "RadiusAuth")
 
 # Various Parameters
 USERNAME    = "username"
@@ -19,6 +52,252 @@ USER_INFO   = "--userInfo"
 
 APP_NAME    = "radius_auth"
 CONF_FILE   = "radius.conf"
+
+class ConfFile():
+    """
+    Provides a mechanism for reading Splunk conf files.
+    """
+    
+    # This regular expression parse out the stanza name
+    STANZA_REGEX = re.compile("^[[]([^]]*)")
+    
+    def __init__(self, file_path = None):
+        
+        self.settings = {}
+        
+        if file_path is not None:
+            self.loadFile(file_path)
+    
+    def readline(self, file_handle):
+        """
+        Read a line from the given file handle and return the complete line (may take in multiple lines if the entry spans multiple lines)
+        
+        Arguments:
+        file_handle -- The file handle to read a line from.
+        """
+        
+        # Determine if we are at the start of the file
+        at_beginning = (file_handle.tell() == 0)
+        
+        # This will contain the line
+        line = ""
+        
+        # Read in each line until we have completed a single conf line (which may span multiple lines if it ends with a slash)
+        while True:
+            
+            # Read in the line
+            l = file_handle.readline()
+            
+            # An empty string indicates that we have hit the last line in the file
+            if l == '':
+                break
+            
+            # Check to determine if the first character is a UTF-8 BOM mark and skip it if so
+            if at_beginning:
+                
+                # Determine if this is the BOM (0xEF,0xBB,0xBF.); see http://en.wikipedia.org/wiki/Byte_order_mark
+                if len(l) > 2 and ( ord(l[0]), ord(l[1]), ord(l[2]) ) == (239, 187, 191):
+                    # Drop the BOM
+                    l = l[3:]
+                    
+                # Note that we are no longer at the beginning
+                at_beginning = False
+                
+            # Add in the next line if the current one ends with \ since this indicates a multi-line entry
+            if l.rstrip("\r\n").endswith("\\"):
+                line += l.rstrip("\r\n")
+                line += "\n"
+              
+            # We got the entire line, we have completed the given line so let's stop
+            else:
+                line += l
+                break
+        
+        return line
+    
+    def readlines(self, file_handle):
+        """
+        Read the limes into an array of strings.
+        
+        Arguments:
+        file_path -- The path to the file to load
+        """
+        
+        # The following will contain the lines
+        lines = []
+        
+        # Read in each line until we are done
+        while True:
+            
+            # Get the line
+            l = self.readline(file_handle)
+            
+            # Append the line if it is not none
+            if l:
+                lines.append(l)
+            else:
+                break
+            
+        # Return the resulting lines
+        return lines
+
+    def loadFile(self, file_path):
+        """
+        Load the settings from the give file path.
+        
+        Arguments:
+        file_path -- The path to the file to load
+        """
+        
+        self.settings = self.loadConf(file_path)
+
+    def loadConfLines(self, lines):
+        """
+        Load the provided lines into a dictionary.
+        
+        Arguments:
+        lines -- An array of lines to parse and load.
+        """
+        
+        stanza = "default"
+        settings  = {stanza : {}}
+        
+        for line in lines:
+            
+            # Remove excessive whitespace
+            l = line.strip()
+            
+            # Skip the line if it is a comment
+            if l.startswith("#"):
+                continue
+            
+            # Load the stanza name
+            elif l.startswith('['):
+                
+                # Search the string
+                r = ConfFile.STANZA_REGEX.search(l)
+                
+                # Get the stanza name if we got a match
+                if r is not None:
+                    stanza = r.groups()[0]
+                else:
+                    raise Exception("Conf file contained an invalid stanza: %l" % (l))
+                
+            # Process the fields if they appear to be so
+            elif line.find("=") > 0:
+                
+                # Parse the name and the value
+                name, value = l.split('=',1)
+                
+                # Strip whitespace off of the name and value
+                name = name.strip()
+                value = value.strip()
+                
+                # Set the name and value
+                settings[stanza][name] = value
+                
+        # Return the settings
+        return settings
+
+    def loadConf(self, file_path):
+        """
+        Load the conf file into a dictionary.
+        
+        Arguments:
+        file_path -- The path to the file to load
+        """
+        
+        # Stop if the argument provided is invalid
+        if file_path is None or len(file_path) == 0:
+            raise ValueError("The path of the conf file to load must not be empty or none")
+        
+        # The dictionary below will contain the settings in a 2x2 dictionary
+        settings = {}
+    
+        # Set the file handle that will be used to load the file
+        file_handle = None
+        
+        # Read in and parse the configuration file
+        try:
+            # Open the file
+            file_handle = open(file_path, 'rb')
+            
+            # Read in all of the lines
+            lines = self.readlines(file_handle)
+            
+            # Parse the settings
+            settings = self.loadConfLines(lines)
+            
+        finally:
+            # Close the handle
+            if file_handle is not None:
+                file_handle.close()
+        
+        # Return the settings
+        return settings
+
+    def __getitem__(self, key):
+        return self.settings[key]
+    
+    def keys(self):
+        return self.settings.keys()
+    
+    def items(self):
+        return self.settings.items()
+    
+    def __add__(self, other):
+        return ConfFile.merge(self, other)
+
+    def __iter__(self):
+        return self.settings.itervalues()
+    
+    def get(self, name, default = None):
+        if name in self.settings:
+            return self.settings[name]
+        else:
+            return default
+
+    @staticmethod
+    def merge( conf_defaults, conf_overriding ):
+        """
+        Merge the two provided conf file objects. The second argument will take predence with its values overwriting those from the first argument.
+        
+        Arguments:
+        conf_defaults -- The first conf file object to load from
+        conf_overriding -- The second conf file object to load from; these values will override the values from the other object if they overlap
+        """
+        
+        merged = {}
+        
+        # Load in the stanzas from the left operand
+        for stanza in conf_defaults.settings:
+            
+            # These are the merged settings
+            stanza_settings = None
+            
+            # Load the stanza from the right operand if it has them and merge them such that the left operands settings are overridden
+            if stanza in conf_overriding:
+                stanza_settings = dict(conf_defaults[stanza].items() + conf_overriding[stanza].items())
+                
+            # If the settings do not exist in the left right operand then just load the existing stanza
+            else:
+                stanza_settings = conf_defaults[stanza]
+                
+            # Save the merged dictionary
+            merged[stanza] = stanza_settings
+            
+        # Load the items that are exclusively in the right operand
+        for stanza in conf_overriding.settings:
+            if stanza not in merged:
+                merged[stanza] = conf_overriding[stanza]
+            else:
+                merged[stanza] = dict(merged[stanza].items() + conf_overriding[stanza].items())
+        
+        # Create the resulting instance
+        ci = ConfFile()
+        ci.settings = merged
+        
+        return ci
 
 class UserInfo():
     """
@@ -76,7 +355,7 @@ class UserInfo():
             return False
         
     @staticmethod
-    def getAllUsers( directory = None ):
+    def getAllUsers( directory = None, make_if_non_existent = False ):
         """
         Load all save users info objects.
         
@@ -86,16 +365,22 @@ class UserInfo():
         
         # Get the directory to load the user info from
         if directory is None:
-            directory = UserInfo.getUserInfoDirectory( make_if_non_existent=False )
+            directory = UserInfo.getUserInfoDirectory( make_if_non_existent )
         
         # The array below will hold the user objects
         users = []
         
-        # Load the user info files
-        files = os.listdir( directory )
-        
-        for f in files:
-            users.append( UserInfo.loadFile( os.path.join( directory, f) ) )
+        try:
+            # Load the user info files
+            files = os.listdir( directory )
+            
+            for f in files:
+                users.append( UserInfo.loadFile( os.path.join( directory, f) ) )
+                
+        except OSError, e:
+            # Path does not exist, likely because the directory has not yet been created
+            logger.info("The user info cache directory does not exist yet")
+            pass
         
         # Return the users
         return users
@@ -202,7 +487,7 @@ class UserInfo():
         # Determine if the user info object already exists
         files = os.listdir( directory )
         found = (uid + ".json") in files
-                
+        
         # Determine if the user info has changed
         if found:
             existing = UserInfo.load(self.username, directory)
@@ -338,43 +623,8 @@ class RadiusAuth():
         if len(self.secret.strip()) == 0:
             raise ValueError("The secret cannot be none")
         
-    def loadConfSettings( self, file, stanza = "default" ):
-        """
-        Load the settings from the local conf files.
-        
-        Arguments:
-        file -- The file to load the settings from
-        stanza -- The stanza to load
-        """
-        
-        # Try to open the file
-        fp = open(file)
-        
-        # Setup the config parser
-        conf = ConfigParser.SafeConfigParser()
-        
-        # Read the file
-        conf.readfp(fp)
-        
-        # Read in the default stanza
-        try:
-            defaults = RadiusAuth.convertNVpairsToDict(conf.items("default"))
-        except ConfigParser.NoSectionError:
-            # We don't have a default section, this ok to ignore this
-            defaults = {} # an empty dictionary means we found no defaults to use
-        
-        # Set the server instance to empty so that we don't generate an error if a server entry does not exist
-        non_defaults = {}
-        
-        # Load the specific stanza if one is requested
-        if stanza is not None and stanza is not "default":
-            non_defaults = RadiusAuth.convertNVpairsToDict(conf.items(stanza))
-        
-        # Combine the defaults and non-defaults
-        settings = dict(defaults.items() + non_defaults.items())
-        
-        # Read in the server stanza
-        return settings
+        if self.identifier is None:
+            raise ValueError("The identifier cannot be none")
     
     def loadConf( self, directory = None ):
         """
@@ -389,38 +639,31 @@ class RadiusAuth():
             directory = os.path.join( os.environ["SPLUNK_HOME"], "etc", "apps", APP_NAME )
         
         # Load the default conf
-        default_settings = self.loadConfSettings( os.path.join(directory, "default", CONF_FILE), "default" )
+        default_conf = ConfFile()
+        try:
+            default_conf.loadFile( os.path.join(directory, "default", CONF_FILE) )
+        except IOError:
+            pass # File does not exist
         
         # Load the local conf
-        local_settings = self.loadConfSettings( os.path.join(directory, "local", CONF_FILE), "default" )
-        
+        local_conf = ConfFile()
+        try:
+            local_conf.loadFile( os.path.join(directory, "local", CONF_FILE) )
+        except IOError:
+            pass # File does not exist
+         
         # Layer the conf files
-        combined = dict(default_settings.items() + local_settings.items())
+        combined_conf = default_conf + local_conf
+        combined = combined_conf.get("default")
         
         # Initialize the class
-        self.identifier = combined.get(RadiusAuth.RADIUS_IDENTIFIER, None)
+        self.identifier = combined.get(RadiusAuth.RADIUS_IDENTIFIER, "Splunk")
         self.server     = combined.get(RadiusAuth.RADIUS_SERVER, None)
         self.secret     = combined.get(RadiusAuth.RADIUS_SECRET, None)
         
         # Check the values
         self.checkValues()
-        
-    @staticmethod
-    def convertNVpairsToDict( list ):
-        """
-        Convert a list of name/value tuples to a dictionary.
-        
-        Arguments:
-        list -- An array of tuples
-        """
-        
-        d = {}
-        
-        for n, v in list:
-            d[n] = v
-            
-        return d
-        
+    
     @staticmethod
     def getDictionaryFile():
         """
