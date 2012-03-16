@@ -42,6 +42,57 @@ class RadiusAuthAppTest(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree( self.tmp_dir )
 
+class TestConfFile(RadiusAuthAppTest):
+    
+    def test_load_file(self):
+        
+        cf = ConfFile( os.path.join("test_load_conf", "local", "radius.conf") )
+        
+        d = cf["default"]
+        
+        self.assertEquals(d['server'], "auth.server1.acme.com")
+        self.assertEquals(d['secret'], "changeme")
+        self.assertEquals(d['identifier'], "server1")
+        
+    def test_load_file_bom(self):
+        
+        cf = ConfFile( os.path.join("test_load_conf_bom", "default", "radius.conf") )
+        
+        d = cf["default"]
+        
+        self.assertEquals(d['server'], "auth.server1.acme.com")
+        self.assertEquals(d['secret'], "changeme")
+        
+    def test_merge(self):
+        
+        cf_default = ConfFile( os.path.join("test_load_conf", "default", "radius.conf") )
+        
+        cf_local = ConfFile( os.path.join("test_load_conf", "local", "radius.conf") )
+        
+        cf_merged = ConfFile.merge(cf_default, cf_local)
+        
+        d = cf_merged["default"]
+        
+        self.assertEquals(d['server'], "auth.server1.acme.com")
+        self.assertEquals(d['secret'], "changeme")
+        self.assertEquals(d['identifier'], "server1")
+        
+    def test_add(self):
+        
+        cf_default = ConfFile( os.path.join("test_load_conf", "default", "radius.conf") )
+        
+        cf_local = ConfFile( os.path.join("test_load_conf", "local", "radius.conf") )
+        
+        cf_merged = cf_default + cf_local
+        
+        d = cf_merged["default"]
+        
+        self.assertEquals( cf_merged.get("NonExist", None), None)
+        
+        self.assertEquals(d['server'], "auth.server1.acme.com")
+        self.assertEquals(d['secret'], "changeme")
+        self.assertEquals(d['identifier'], "server1")
+
 class TestRadiusAuth(RadiusAuthAppTest):
 
     def test_auth_valid(self):
@@ -72,6 +123,13 @@ class TestRadiusAuth(RadiusAuthAppTest):
         self.assertEquals( len(users), 1)
         self.assertTrue( users[0].username, self.username)
         
+    def test_auth_auth_info_no_directory(self):
+        
+        users = UserInfo.getAllUsers( os.path.join( self.tmp_dir, "DoesNotExist" ), make_if_non_existent = False )
+        
+        if len(users) != 0:
+            self.fail("The users list for a directory that does not exist was not an empty array as expected")
+        
         
     def test_auth_invalid_password(self):
         
@@ -90,6 +148,15 @@ class TestRadiusAuth(RadiusAuthAppTest):
         self.assertEquals(ra.server, "auth.server1.acme.com")
         self.assertEquals(ra.secret, "changeme")
         self.assertEquals(ra.identifier, "server1")
+        
+    def test_load_conf_bom(self):
+        
+        ra = RadiusAuth()
+        
+        ra.loadConf("test_load_conf_bom")
+        
+        self.assertEquals(ra.server, "auth.server1.acme.com")
+        self.assertEquals(ra.secret, "changeme")
         
 class TestUserInfo(unittest.TestCase):
     
