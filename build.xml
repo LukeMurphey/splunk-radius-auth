@@ -49,6 +49,7 @@
             <info target="${value.build.workingcopy.directory}" />
             <wcVersion prefix="svn." path="${value.build.workingcopy.directory}" />
         </svn>
+    	
     </target>
 	
     <!-- ================================= 
@@ -76,12 +77,17 @@
     <!-- ================================= 
           target: populate_export_dir
          ================================= -->
-    <target name="populate_export_dir">
+    <target name="populate_export_dir" depends="get_build_number">
     	
-    	<!-- Copy the files over -->
-    	<copy todir="${export_dir}/${value.build.appname}">
-    	    <fileset dir="${value.src.directory}"/>
-    	</copy>
+        <!-- Copy the files over -->
+        <copy todir="${export_dir}/${value.build.appname}">
+            <fileset dir="${value.src.directory}" />
+            
+            <!-- Perform the substitution of the build information -->
+            <filterset begintoken="${" endtoken="}"> 
+                <filter token="build.number" value="${svn.revision.max}" />
+            </filterset>
+        </copy>
 
     </target>
     	
@@ -107,6 +113,8 @@
     	
     	<!-- Delete the temporary location so that old files do not get streamed in -->
     	<delete dir="${value.temp.directory}" />
+    	
+    	<echo>App ${value.build.appname} build ${svn.revision.max} created: ${value.build.packageoutput.directory}/${value.build.appname}.tar.gz</echo>
 
     </target>
 	
@@ -127,7 +135,7 @@
           target: deploy
          ================================= -->
     <target name="deploy" depends="setup_tmp_directory_for_deployment,populate_export_dir" description="Deploys the app to an instance of Splunk" >
-        <echo>App deployed to ${export_dir}</echo>
+        <echo>App ${value.build.appname} build ${svn.revision.max} deployed to ${export_dir}</echo>
     </target>
 	
     <!-- ================================= 
