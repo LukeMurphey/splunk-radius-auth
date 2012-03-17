@@ -16,9 +16,17 @@
           target: clean
          ================================= -->
     <target name="clean" description="Clean up temporary files and directories created by this build script" >
+    	
+    	<!-- Delete the temporary directory -->
         <delete quiet="true" includeEmptyDirs="true">
             <fileset dir="${value.temp.directory}" />
         </delete>
+    	
+    	<!-- Delete the local directory where packages are placed -->
+        <delete quiet="true" includeEmptyDirs="true">
+            <fileset dir="tmp" />
+        </delete>
+    	
     </target>
 	
     <!-- ================================= 
