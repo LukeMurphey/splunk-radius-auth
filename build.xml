@@ -12,6 +12,13 @@
 	<property name="value.temp.directory" value="${java.io.tmpdir}/${user.name}/${ant.project.name}" />
 	<property name="value.build.appname" value="radius_auth" />
 	
+	<!-- Set up the ant classpath -->
+    <path id="ant.classpath">
+        <fileset dir="ant">
+          <include name="*.jar" />
+        </fileset>
+    </path>
+	
     <!-- ================================= 
           target: clean
          ================================= -->
@@ -33,8 +40,10 @@
           target: update_from_svn
          ================================= -->
     <target name="update_from_svn">
-        <taskdef name="svn" classpath="ant/svnant.jar;ant/svnClientAdapter.jar;ant/svnjavahl.jar;ant/svnkit.jar" classname="org.tigris.subversion.svnant.SvnTask" />
-        <svn>
+    	
+    	<taskdef name="svn" classpathref="ant.classpath" classname="org.tigris.subversion.svnant.SvnTask" />
+    	
+        <svn svnkit="true">
             <update dir="${value.build.workingcopy.directory}" revision="HEAD" />
         </svn>
     </target>
@@ -43,9 +52,10 @@
           target: get_build_number
          ================================= -->
     <target name="get_build_number">
-    	<taskdef name="svn" classpath="ant/svnant.jar;ant/svnClientAdapter.jar;ant/svnjavahl.jar;ant/svnkit.jar" classname="org.tigris.subversion.svnant.SvnTask" />
+    	
+        <taskdef name="svn" classpathref="ant.classpath" classname="org.tigris.subversion.svnant.SvnTask" />
 
-        <svn>
+        <svn svnkit="true">
             <info target="${value.build.workingcopy.directory}" />
             <wcVersion prefix="svn." path="${value.build.workingcopy.directory}" />
         </svn>
