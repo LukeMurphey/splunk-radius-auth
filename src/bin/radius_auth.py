@@ -864,7 +864,7 @@ def getUsers( args, out=sys.stdout, directory = None ):
     users = UserInfo.getAllUsers(directory)
     
     # Log that the command has executed
-    logger.info( "function=getUsers called, '%i' user found, users=%i" % (len(users), len(users)) )
+    logger.info( "function=getUsers called, '%i' users found, users=%i" % (len(users), len(users)) )
     
     # Create the output string with the users
     output = ""
