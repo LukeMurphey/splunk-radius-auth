@@ -174,7 +174,7 @@ class TestUserInfo(unittest.TestCase):
         
         self.assertFalse( ui.hasChanged() )
         
-        ui.realname = "Luke Murphy"
+        ui.realname = "Luke Murphey"
         
         self.assertTrue( ui.hasChanged() )
         
@@ -235,6 +235,10 @@ class TestUserInfo(unittest.TestCase):
             elif user.username == "jdoe":
                 self.assertEquals( user_jdoe.load_signature, user.load_signature)
         
+    def test_to_string(self):
+        ui = UserInfo( "jdoe", "John Doe", ["admin", "power"])
+        
+        self.assertEquals( str(ui), ";jdoe;John Doe;admin:power")
         
 class TestMainAuthMehods(RadiusAuthAppTest):
     
@@ -286,7 +290,7 @@ class TestMainAuthMehods(RadiusAuthAppTest):
         getUserInfo( args, out, self.tmp_dir )
         
         # Test the output
-        self.assertEquals( out.getvalue().strip(), "--status=success --userInfo;" + self.username +  ";John Doe;admin:power"  )
+        self.assertEquals( out.getvalue().strip(), "--status=success --userInfo=;" + self.username +  ";John Doe;admin:power"  )
     
     def test_get_users(self):
         
@@ -304,8 +308,8 @@ class TestMainAuthMehods(RadiusAuthAppTest):
         getUsers( None, out, self.tmp_dir )
         
         # Test the output
-        if out.getvalue().strip() not in ["--status=success --userInfo;alincoln;Abraham Lincoln;power --userInfo;jdoe;John Doe;admin:power",
-                                          "--status=success --userInfo;jdoe;John Doe;admin:power --userInfo;alincoln;Abraham Lincoln;power"]:
+        if out.getvalue().strip() not in ["--status=success --userInfo=;alincoln;Abraham Lincoln;power --userInfo=;jdoe;John Doe;admin:power",
+                                          "--status=success --userInfo=;jdoe;John Doe;admin:power --userInfo=;alincoln;Abraham Lincoln;power"]:
             self.fail("The output of getUsers() was not what was expected: " + out.getvalue().strip())
         
         

@@ -32,7 +32,7 @@ def setup_logger(level, name, use_rotating_handler=True):
         else:
             file_handler = logging.FileHandler(os.environ['SPLUNK_HOME'] + '/var/log/splunk/radius_auth.log')
             
-        formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+        formatter = logging.Formatter('%(asctime)s %(levelname)s ' + name + ' - %(message)s')
         file_handler.setFormatter(formatter)
         
         logger.addHandler(file_handler)
@@ -40,7 +40,7 @@ def setup_logger(level, name, use_rotating_handler=True):
     return logger
 
 # Setup the handler
-logger = setup_logger(logging.DEBUG, "RadiusAuth")
+logger = setup_logger(logging.INFO, "RadiusAuth")
 
 # Various Parameters
 USERNAME    = "username"
@@ -377,7 +377,7 @@ class UserInfo():
             for f in files:
                 users.append( UserInfo.loadFile( os.path.join( directory, f) ) )
                 
-        except OSError, e:
+        except OSError:
             # Path does not exist, likely because the directory has not yet been created
             logger.info("The user info cache directory does not exist yet")
             pass
@@ -434,8 +434,7 @@ class UserInfo():
             
         # Return the path
         return full_path
-            
-        
+         
     def toDict(self):
         """
         Convert the user-info to a dictionary. Useful for converting user-info objects from JSON files.
@@ -575,7 +574,7 @@ class UserInfo():
             realname = self.realname
             
         # Make the roles string (a comma separated list)
-        if len(self.roles) == 0:
+        if self.roles is None or len(self.roles) == 0:
             roles = "user"
         else:
             roles = ":".join(self.roles)
@@ -691,6 +690,10 @@ class RadiusAuth():
     def checkUsernameAndPassword(self, username, password):
         """
         Checks the username and password and throws an exception if one is empty or null.
+        
+        Arguments:
+        username -- The username to check
+        password -- The password to check
         """
         
         if username is None:
@@ -790,6 +793,14 @@ def readInputs():
     return return_dict
 
 def userLogin( args, out=sys.stdout, directory = None ):
+    """
+    Performs a login and print the result in such a way that Splunk can read it.
+    
+    Arguments:
+    args -- The args from the command-line
+    out -- The stream to wrote the output to (defaults to standard out)
+    directory -- The directory to load the conf files from
+    """
     
     # Get the username and password that are being authenticated
     username = args[USERNAME]
@@ -803,13 +814,29 @@ def userLogin( args, out=sys.stdout, directory = None ):
     
     # Try to perform the authentication
     if ra.authenticate(username, password, directory=directory):
+        
+        # Log that the command has executed
+        logger.info( "function=userLogin called, user '%s' authenticated action=success, username=%s" % (username, username) )
+        
         out.write(SUCCESS)
         return 0
     else:
+        
+        # Log that the command has executed
+        logger.info( "function=userLogin called, user '%s' authenticated action=fail, username=%s" % (username, username) )
+        
         out.write(FAILED)
         return -1
 
 def getUserInfo( args, out=sys.stdout, directory = None ):
+    """
+    Get the user info and print the info in such a way that Splunk can read it.
+    
+    Arguments:
+    args -- The args from the command-line
+    out -- The stream to wrote the output to (defaults to standard out)
+    directory -- The directory to load the conf files from
+    """
     
     # Get the username we are looking up
     username = args[USERNAME]
@@ -823,10 +850,12 @@ def getUserInfo( args, out=sys.stdout, directory = None ):
     """
     
     if user is None:
+        logger.info( "function=getUserInfo called, user '%s' not found, username=%s" % (username, username) )
         out.write(FAILED)
         return -1
     else:
-        out.write(SUCCESS + ' ' + USER_INFO + str(user))
+        logger.info( "function=getUserInfo called, user '%s' found, username=%s" % (username, username) )
+        out.write(SUCCESS + ' ' + USER_INFO + "=" + str(user))
         return 0
 
 def getUsers( args, out=sys.stdout, directory = None ):
@@ -834,11 +863,14 @@ def getUsers( args, out=sys.stdout, directory = None ):
     # Get all of the users from the cache
     users = UserInfo.getAllUsers(directory)
     
+    # Log that the command has executed
+    logger.info( "function=getUsers called, '%i' user found, users=%i" % (len(users), len(users)) )
+    
     # Create the output string with the users
     output = ""
     
     for user in users:
-        output += ' ' + USER_INFO + str(user)
+        output += ' ' + USER_INFO + "=" + str(user)
 
     # Print the result
     out.write(SUCCESS + output)
@@ -851,8 +883,6 @@ def getSearchFilter( args ):
 if __name__ == "__main__":
     method = sys.argv[1]
     args = readInputs()
-
-    return_dict = {}
     
     if method == "userLogin":
         userLogin( args )
@@ -860,7 +890,7 @@ if __name__ == "__main__":
         getUsers( args )
     elif method == "getUserInfo":
         getUserInfo( args )
-    elif method == "getSearchFilter":
-        getSearchFilter( args )
+    #elif method == "getSearchFilter":
+        #getSearchFilter( args )
     else:
         print "ERROR unknown function call: " + method
