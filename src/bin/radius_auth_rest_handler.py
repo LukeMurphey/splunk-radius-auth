@@ -192,9 +192,6 @@ class RadiusAuthRestHandler(admin.MConfigHandler):
     VALID_PARAMS        = [ PARAM_SECRET, PARAM_SERVER, PARAM_TEST_USERNAME, PARAM_TEST_PASSWORD, PARAM_IDENTIFIER, PARAM_ENABLED, PARAM_DISABLED ]
     REQUIRED_PARAMS     = [ PARAM_SECRET, PARAM_SERVER ]
     
-    # These parameters must be booleans
-    BOOLEAN_PARAMS  = [ PARAM_DISABLED, PARAM_ENABLED ]
-    
     # These are parameters that are not persisted to the conf files; these are used within the REST handler only
     UNSAVED_PARAMS  = [ PARAM_TEST_USERNAME, PARAM_TEST_PASSWORD, PARAM_ENABLED, PARAM_DISABLED ]
     
