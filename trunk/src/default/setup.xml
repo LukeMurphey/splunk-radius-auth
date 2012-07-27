@@ -40,7 +40,7 @@
       </input>
       
       <input field="script_enabled">
-        <label>Enable RADIUS authentication (check to )</label>
+        <label>Enable RADIUS authentication (uncheck to use normal local Splunk authentication only)</label>
         <type>bool</type>
       </input>
       
