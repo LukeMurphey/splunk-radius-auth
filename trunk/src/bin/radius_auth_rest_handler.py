@@ -464,11 +464,8 @@ class RadiusAuthRestHandler(admin.MConfigHandler):
             
             # Determine if the authentication script is to be set to disabled
             disabled = False
-            
-            if RadiusAuthRestHandler.PARAM_DISABLED in new_settings and new_settings[RadiusAuthRestHandler.PARAM_DISABLED] in ["1", "true"]:
-                disabled = True
                 
-            if disabled== False and RadiusAuthRestHandler.PARAM_ENABLED in new_settings and new_settings[RadiusAuthRestHandler.PARAM_ENABLED] in ["0", "false"]:
+            if disabled == False and RadiusAuthRestHandler.PARAM_ENABLED in new_settings and new_settings[RadiusAuthRestHandler.PARAM_ENABLED] in ["0", "false"]:
                 disabled = True
                         
             # Setup the authentication script
