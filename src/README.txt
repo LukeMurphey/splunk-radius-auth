@@ -49,4 +49,12 @@ Getting Support
 Go to the following pafe if you need support:
 
      http://lukemurphey.net/projects/splunk-radius-auth/
-     
+
+
+
+================================================
+Change History
+================================================
+
+ * 1.0:   initial version
+ * 1.0.1: fixed issue where setup app did not configure the authentication script correctly
