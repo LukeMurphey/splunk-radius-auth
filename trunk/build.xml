@@ -89,14 +89,28 @@
          ================================= -->
     <target name="populate_export_dir" depends="get_build_number">
     	
-        <!-- Copy the files over -->
+        <!-- Copy the files over that need substitution. This should only be
+             applied to text files since Ant may corrupt binary files otherwise. -->
         <copy todir="${export_dir}/${value.build.appname}">
-            <fileset dir="${value.src.directory}" />
+            <fileset dir="${value.src.directory}">
+            	<include name="**/*.conf" />
+            	<include name="**/*.txt" />
+            	<include name="**/*.xml" />
+            </fileset>
             
             <!-- Perform the substitution of the build information -->
             <filterset begintoken="${" endtoken="}"> 
                 <filter token="build.number" value="${svn.revision.max}" />
             </filterset>
+        </copy>
+    	
+        <!-- Copy the binary files over. -->
+        <copy todir="${export_dir}/${value.build.appname}">
+            <fileset dir="${value.src.directory}">
+                <exclude name="**/*.conf" />
+                <exclude name="**/*.txt" />
+                <exclude name="**/*.xml" />
+            </fileset>
         </copy>
 
     </target>
