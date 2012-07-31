@@ -593,7 +593,7 @@ class RadiusAuth():
     RADIUS_SECRET     = "secret"
     RADIUS_SERVER     = "server"
     
-    def __init__(self, server = None, secret = None, identifier = None, roles_key="(0, 0)"):
+    def __init__(self, server = None, secret = None, identifier = None, roles_key="(0, 1)"):
         """
         Sets up a class that can be used for authenticating against a RADIUS server.
         """
@@ -708,7 +708,7 @@ class RadiusAuth():
         if len(password.strip()) == 0:
             raise ValueError("The password cannot be none")
     
-    def authenticate(self, username, password, update_user_info=True, directory=None ):
+    def authenticate(self, username, password, update_user_info=True, directory=None, log_reply_items=True ):
         """
         Perform an authentication attempt to the RADIUS server. Return true if the authentication succeeded.
         
@@ -744,11 +744,8 @@ class RadiusAuth():
         # Update the lookup if necessary
         if auth_suceeded:
             
-            """
-            for k, v in reply.items():
-                print k, v
-            print "Is in reply:", (0,0) in reply
-            """
+            # Log the reply items that were received
+            logger.debug( "Got the following fields upon login: %s" % ( str(reply.items()) ) )
             
             # Get the roles
             if update_user_info and self.roles_key is not None:
