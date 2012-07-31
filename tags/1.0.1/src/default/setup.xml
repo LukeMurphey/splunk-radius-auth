@@ -1,0 +1,96 @@
+<setup>
+    
+  <block title="RADIUS Authentication for Splunk"
+         endpoint="admin/radius_auth" entity="default">
+
+      <text>Setup Splunk to use RADIUS for authenticating users to Splunk.
+          
+          <![CDATA[
+          
+          <script language="javascript">
+              
+              $(document).ready(function() {
+                $('#\\/admin\\/radius_auth\\/_new\\/name_id').attr("placeholder", "e.g. radius.acme.net:11812");
+              
+                $('#\\/admin\\/radius_auth\\/_new\\/identifier_id').attr("placeholder", "e.g. Splunk");
+                
+                if ( $("#\\/admin\\/radius_auth\\/default\\/secret_id").attr("value").length > 0 ){
+                    $("#\\/admin\\/radius_auth\\/default\\/secret_id").attr("value", "");
+                    
+                    $("#\\/admin\\/radius_auth\\/default\\/secret_id").attr("placeholder", "Leave blank to use existing secret");
+                }
+              });
+          </script>
+          ]]>
+          </text>
+
+      <input field="server">
+        <label>Enter the RADIUS server name; include the port if it is non-standard (e.g. "radius.acme.net:11812")</label>
+        <type>text</type>
+      </input>
+      
+      <input field="identifier">
+        <label>Enter an identifier for the host generating the request to the RADIUS server</label>
+        <type>text</type>
+      </input>
+      
+      <input field="secret">
+        <label>Enter the RADIUS server password/secret</label>
+        <type>password</type>
+      </input>
+      
+      <input field="script_enabled">
+        <label>Enable RADIUS authentication (uncheck to use normal local Splunk authentication only)</label>
+        <type>bool</type>
+      </input>
+      
+      <text>
+          <![CDATA[
+          
+          <legend>Test Settings</legend>
+          
+          The settings below are only required if you want to perform a test before saving the settings.
+          If the test fails, the settings will not be saved and you will be given a chance to update the settings
+          and try again.
+          <div>
+          Leave the settings blank to skip the test.
+          </div>
+          ]]>
+      </text>
+      <input field="test_username">
+        <label>Enter a username to use for testing</label>
+        <type>text</type>
+      </input>
+      
+      <input field="test_password">
+        <label>Enter a password to use for testing</label>
+        <type>password</type>
+      </input>
+
+      <text>
+          <![CDATA[
+          <div style="color: #AAA; float:left;">
+          This app is licensed under a <a target="_blank" href="http://creativecommons.org/licenses/by/3.0/">Creative Commons Attribution 3.0 Unported License</a>.
+          <br />
+          See <a target="_blank" href="http://lukemurphey.net/projects/splunk-radius-auth">LukeMurphey.net</a> for more information and for support.
+          </div>
+          
+          <div style="float:left;">
+          <img alt="Icon" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFAAAAAPCAIAAAD8q9/YAAAABGdBTUEAANbY1E9YMgAAABl0RVh0
+U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAISSURBVHjaYmAYYYARiP///z9SfMvIyAJh
+rdm0Glliz669M6fO7OjoKC8vx9Tm6up66tSptu5WcQlxIFdeVsHVyfXjh4+D3LeQeGXClHj54uXy
+xctx+RYIdu/ebWZmNrl/CoT74eOHwoLCoRLJWDy8fMkKYWFhXL6FAGBw3Lxxc8PajUD2x08fPHw8
+vH28h6qHL128lJ6eDmScPXtWWVkZmO6Bafj9+/dAEsgGigDFjY2NXVxcrl29BjWFiQnIRUs/EICc
+nDDZA+/hSxcvf/70GegfIDssLAzIALoPSHZ2dgL9+e7dO2DM37t3DygLFLxz+w48VQMTOWYJAQQQ
+78EZQBLIHkQe/vrlC5AUFBQERinQYxCfAxMwkK2kpAQUT0tLCw0NhRXxUKf//PmDkYURs5BA9h7E
+zwPrWywe5ubhAZJA3wL9BvQhMFYhxTKQC/QzULyiomLWrFloiZOdneP/n/94Ynjw5mE9fV1eXl6I
+P4ERu2fPHqCjgT4HsoGxLSQkBBSBZNczZ84oKitCdAnwCwArKvwxPLgaHsj1cF9X//Onz+/fv49H
+GzBETExMouOiA4L9gVxZabnmhuatW7YO8noYGPpYSunouKi3b98AoxSP5rKyMhVVZYhv+fkEdmzZ
+Mch9i69aArafUjNTKysr29vbsepxcna6fv16QUkBPD33T+gfbUsP0rb0SOssMQAEGAB0zfzj5yHE
+/QAAAABJRU5ErkJggg==" />
+          </div>
+          ]]>
+      </text>
+  </block>
+
+</setup>
