@@ -121,7 +121,17 @@ class TestRadiusAuth(RadiusAuthAppTest):
         users = UserInfo.getAllUsers( self.tmp_dir )
         
         self.assertEquals( len(users), 1)
-        self.assertTrue( users[0].username, self.username)
+        
+        # Get the user
+        user = users[0]
+        self.assertTrue( user.username, self.username)
+        
+        # Make sure the roles exist:
+        if 'can_delete' not in user.roles:
+            self.fail("can_delete not in the roles")
+            
+        if 'admin' not in user.roles:
+            self.fail("admin not in the roles")
         
     def test_auth_auth_info_no_directory(self):
         
