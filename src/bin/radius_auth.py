@@ -40,7 +40,7 @@ def setup_logger(level, name, use_rotating_handler=True):
     return logger
 
 # Setup the handler
-logger = setup_logger(logging.INFO, "RadiusAuth")
+logger = setup_logger(logging.DEBUG, "RadiusAuth")
 
 # Various Parameters
 USERNAME    = "username"
@@ -592,15 +592,33 @@ class RadiusAuth():
     RADIUS_IDENTIFIER = "identifier"
     RADIUS_SECRET     = "secret"
     RADIUS_SERVER     = "server"
+    DEFAULT_ROLES     = "default_roles"
+    ROLES_KEY         = "roles_key"
     
-    def __init__(self, server = None, secret = None, identifier = None, roles_key="(0, 1)"):
+    # This regular expression splits up a list of roles
+    ROLES_SPLIT  = re.compile("[:,]*")
+    
+    
+    def __init__(self, server = None, secret = None, identifier = None, roles_key="(0, 1)", default_roles=None):
         """
         Sets up a class that can be used for authenticating against a RADIUS server.
+        
+        Arguments:
+        server -- The RADIUS server to connect to (examples: radius.acme.net, radius.acme.net:10812)
+        secret -- The secret used to authenticate to the RADIUS server
+        identifier -- The identifier assocaited with the RADIUS client
+        roles_key -- The key that identifies the RADIUS attribute that defines the user's role
+        default_roles -- The list of default roles that ought to be used if no roles could be found for the user (needs to be an array of strings)
         """
         
         self.server     = server
         self.secret     = secret
         self.identifier = identifier
+        
+        if default_roles is not None:
+            self.default_roles = default_roles[:]
+        else:
+            self.default_roles = None
         
         # Set up the key that we will use to obtain the roles information
         self.roles_key = roles_key
@@ -656,9 +674,11 @@ class RadiusAuth():
         combined = combined_conf.get("default")
         
         # Initialize the class
-        self.identifier = combined.get(RadiusAuth.RADIUS_IDENTIFIER, "Splunk")
-        self.server     = combined.get(RadiusAuth.RADIUS_SERVER, None)
-        self.secret     = combined.get(RadiusAuth.RADIUS_SECRET, None)
+        self.identifier     = combined.get(RadiusAuth.RADIUS_IDENTIFIER, "Splunk")
+        self.server         = combined.get(RadiusAuth.RADIUS_SERVER, None)
+        self.secret         = combined.get(RadiusAuth.RADIUS_SECRET, None)
+        self.roles_key      = combined.get(RadiusAuth.ROLES_KEY, None)
+        self.default_roles = self.splitRoles( combined.get(RadiusAuth.DEFAULT_ROLES, None) )
         
         # Check the values
         self.checkValues()
@@ -708,6 +728,19 @@ class RadiusAuth():
         if len(password.strip()) == 0:
             raise ValueError("The password cannot be none")
     
+    def splitRoles(self, roles_str):
+        """
+        Takes a string containing a list of roles separated by a colon or a comma and returns the roles in a list.
+        
+        Returns none if the roles_str is none.
+        
+        Arguments:
+        roles_str -- The string containing a list of roles separated by a comma or colon
+        """
+    
+        if roles_str is not None:
+            return self.ROLES_SPLIT.split(roles_str)
+    
     def authenticate(self, username, password, update_user_info=True, directory=None, log_reply_items=True ):
         """
         Perform an authentication attempt to the RADIUS server. Return true if the authentication succeeded.
@@ -751,6 +784,7 @@ class RadiusAuth():
             if update_user_info and self.roles_key is not None:
                 
                 roles = []
+                roles_loaded_from_server = False
                 
                 # Find the roles key if it exists
                 for k, v in reply.items():
@@ -759,10 +793,15 @@ class RadiusAuth():
                     if str(k) == str(self.roles_key):
                         
                         # Parse out the roles
-                        roles = v[0].split(":")
+                        roles = self.splitRoles(v[0])
+                        roles_loaded_from_server = True
                         
                         # Found what we needed, stop here
                         break
+                
+                # Set the roles to the default if defaults are available and if we were not able to load any from the server
+                if not roles_loaded_from_server and self.default_roles is not None:
+                    roles = self.default_roles
                     
                 # Make a new user info object
                 user = UserInfo( username, None, roles)
