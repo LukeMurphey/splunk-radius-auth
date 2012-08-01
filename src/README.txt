@@ -58,3 +58,4 @@ Change History
 
  * 1.0:   initial version
  * 1.0.1: fixed issue where setup app did not configure the authentication script correctly
+ * 1.0.2: added debug logging of the list of fields provided by the RADIUS server, added ability to set the roles_key and the default roles in the conf file, changed the default roles key to "(0, 1)"
