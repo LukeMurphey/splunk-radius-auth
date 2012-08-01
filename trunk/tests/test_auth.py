@@ -132,6 +132,44 @@ class TestRadiusAuth(RadiusAuthAppTest):
             
         if 'admin' not in user.roles:
             self.fail("admin not in the roles")
+            
+    def test_auth_auth_info_custom_roles_key(self):
+        
+        ra = RadiusAuth(self.server, self.secret, self.identifier, roles_key="(28, 15)")
+        
+        result = ra.authenticate(self.username, self.password, update_user_info=True, directory=self.tmp_dir)
+        
+        self.assertTrue(result)
+        users = UserInfo.getAllUsers( self.tmp_dir )
+        
+        self.assertEquals( len(users), 1)
+        
+        # Get the user
+        user = users[0]
+        self.assertTrue( user.username, self.username)
+        
+        # Make sure the roles list is empty (since we entered a roles key that doesn't match the one used by the server and is therefore invalid)
+        self.assertEqual(user.roles, [])
+        
+    def test_auth_auth_info_default_roles(self):
+        
+        expected_roles=["manager", "analyst"]
+        
+        # Authenticate using an invalid roles key so that we use the default roles, not the one provided by the server
+        ra = RadiusAuth(self.server, self.secret, self.identifier, roles_key="(28, 15)", default_roles=expected_roles)
+        
+        result = ra.authenticate(self.username, self.password, update_user_info=True, directory=self.tmp_dir)
+        
+        self.assertTrue(result)
+        users = UserInfo.getAllUsers( self.tmp_dir )
+        
+        self.assertEquals( len(users), 1)
+        
+        # Get the user
+        user = users[0]
+        self.assertTrue( user.username, self.username)
+        
+        self.assertEqual( sorted(user.roles), sorted(expected_roles))
         
     def test_auth_auth_info_no_directory(self):
         
@@ -139,7 +177,6 @@ class TestRadiusAuth(RadiusAuthAppTest):
         
         if len(users) != 0:
             self.fail("The users list for a directory that does not exist was not an empty array as expected")
-        
         
     def test_auth_invalid_password(self):
         
@@ -158,6 +195,44 @@ class TestRadiusAuth(RadiusAuthAppTest):
         self.assertEquals(ra.server, "auth.server1.acme.com")
         self.assertEquals(ra.secret, "changeme")
         self.assertEquals(ra.identifier, "server1")
+        
+    def test_split_roles_colon_delimited(self):
+        
+        ra = RadiusAuth()
+        
+        roles = ra.splitRoles("admin:power:user")
+        
+        self.assertEquals( sorted(roles), sorted(["admin", "power", "user"]))
+        
+    def test_split_roles_comma_delimited(self):
+        
+        ra = RadiusAuth()
+        
+        roles = ra.splitRoles("admin,power,user")
+        
+        self.assertEquals( sorted(roles), sorted(["admin", "power", "user"]))
+        
+    def test_split_roles_single(self):
+        
+        ra = RadiusAuth()
+        
+        roles = ra.splitRoles("admin")
+        
+        self.assertEquals( sorted(roles), sorted(["admin"]))
+        
+    def test_load_conf_non_defaults(self):
+        
+        ra = RadiusAuth()
+        
+        ra.loadConf("test_load_conf_customizations")
+        
+        self.assertEquals(ra.server, "auth.server1.acme.com")
+        self.assertEquals(ra.secret, "changeme")
+        self.assertEquals(ra.identifier, "server1")
+        
+        self.assertEquals(ra.roles_key, "25,")
+        
+        self.assertEquals( sorted(ra.default_roles), sorted(["analyst", "manager"]))
         
     def test_load_conf_bom(self):
         
