@@ -790,7 +790,7 @@ class RadiusAuth():
                 for k, v in reply.items():
                     
                     # Determine if this is the roles string
-                    if str(k) == str(self.roles_key):
+                    if str(k) == str(self.roles_key) and len(v[0].split()) > 0:
                         
                         # Parse out the roles
                         roles = self.splitRoles(v[0])

@@ -20,6 +20,39 @@
                     $("#\\/admin\\/radius_auth\\/default\\/secret_id").attr("placeholder", "Leave blank to use existing secret");
                 }
               });
+              
+            
+                function addJavascript( filename ){
+                    var script = $("<script>");
+                    script.attr({type: 'text/javascript', src: filename});
+                    $("head").append( script );
+                }
+                
+                function addStylesheet( filename ){
+                    // For Internet Explorer, use createStyleSheet since adding a stylesheet using a link tag will not be recognized
+                    // (http://stackoverflow.com/questions/1184950/dynamically-loading-css-stylesheet-doesnt-work-on-ie)
+                    if( document.createStyleSheet ){
+                        document.createStyleSheet(filename);
+                    }
+                    // For everyone else
+                    else{
+                        var link = $("<link>");
+                        link.attr({type: 'text/css',rel: 'stylesheet', href: filename});
+                        $("head").append( link );
+                    }
+                }
+            
+                addJavascript('https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.11/jquery-ui.min.js');
+                addStylesheet('http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.10/themes/base/jquery-ui.css');
+                
+                $(document).ready(function(){
+                    addJavascript('/static/app/radius_auth/jquery.tagsinput.js');
+                    addStylesheet('/static/app/radius_auth/jquery.tagsinput.css');
+
+                    $('input[name="/admin/radius_auth/default/default_roles"]').attr('id', "tags");
+                    $('#tags').tagsInput({'defaultText':'add a role', 'width':'100%', 'height':'28px'});
+                });
+              
           </script>
           ]]>
           </text>
@@ -42,6 +75,20 @@
       <input field="script_enabled">
         <label>Enable RADIUS authentication (uncheck to use normal local Splunk authentication only)</label>
         <type>bool</type>
+      </input>
+      
+      <text>
+          <![CDATA[
+          
+          <legend>Role Assignments</legend>
+          
+          The settings below are only required if you indeed to assign roles to users (other that the user role which is assigned by default).
+          ]]>
+      </text>
+      
+      <input field="default_roles">
+        <label>Enter the default roles that ought to be assigned if no roles were provided by the RADIUS server (comma separated list)</label>
+        <type>text</type>
       </input>
       
       <text>
