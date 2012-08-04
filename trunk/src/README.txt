@@ -46,7 +46,7 @@ If users cannot authenticate, check the application logs using the following sea
 Getting Support
 ================================================
 
-Go to the following pafe if you need support:
+Go to the following website if you need support:
 
      http://lukemurphey.net/projects/splunk-radius-auth/
 
