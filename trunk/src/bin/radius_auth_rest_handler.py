@@ -135,13 +135,21 @@ class ListValidator(StandardFieldValidator):
     
     def to_python(self, name, value):
         
+        # Treat none as an empty list
+        if value is None:
+            return []
+        
         split_list = ListValidator.LIST_SPLIT.split(value)
         
-        # Rebuild the list as comma separated list in order to normalize it
-        return ",".join( split_list )
+        return split_list
 
-    def to_string(self, name, value):        
-        return str(value)
+    def to_string(self, name, value):
+        
+        if value is None:
+            return ""
+        else:
+            # Rebuild the list as comma separated list in order to normalize it
+            return ",".join( value )
 
 def log_function_invocation(fx):
     """
