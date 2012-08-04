@@ -5,6 +5,7 @@ import logging
 import logging.handlers
 import os
 import traceback
+import re
 
 from radius_auth import RadiusAuth
 
@@ -125,6 +126,23 @@ class AccountTestValidator():
             
             raise admin.ArgValidationException("Unable to validate credentials against the server '%s' for user '%s'" % ( values['server'], values['test_username']))
 
+class ListValidator(StandardFieldValidator):
+    """
+    Validates and converts field that represents a list (comma or colon separated).
+    """
+    
+    LIST_SPLIT  = re.compile("[:,]*")
+    
+    def to_python(self, name, value):
+        
+        split_list = ListValidator.LIST_SPLIT.split(value)
+        
+        # Rebuild the list as comma separated list in order to normalize it
+        return ",".join( split_list )
+
+    def to_string(self, name, value):        
+        return str(value)
+
 def log_function_invocation(fx):
     """
     This decorator will provide a log message for when a function starts and stops.
@@ -187,9 +205,11 @@ class RadiusAuthRestHandler(admin.MConfigHandler):
     PARAM_DISABLED      = 'script_disabled'
     PARAM_ENABLED       = 'script_enabled'
     PARAM_SERVER        = 'server'
+    PARAM_ROLES_KEY     = 'roles_key'
+    PARAM_DEFAULT_ROLES = 'default_roles'
     
     # Below are the list of valid and required parameters
-    VALID_PARAMS        = [ PARAM_SECRET, PARAM_SERVER, PARAM_TEST_USERNAME, PARAM_TEST_PASSWORD, PARAM_IDENTIFIER, PARAM_ENABLED, PARAM_DISABLED ]
+    VALID_PARAMS        = [ PARAM_SECRET, PARAM_SERVER, PARAM_TEST_USERNAME, PARAM_TEST_PASSWORD, PARAM_IDENTIFIER, PARAM_ENABLED, PARAM_DISABLED, PARAM_ROLES_KEY, PARAM_DEFAULT_ROLES ]
     REQUIRED_PARAMS     = [ PARAM_SECRET, PARAM_SERVER ]
     
     # These are parameters that are not persisted to the conf files; these are used within the REST handler only
@@ -197,9 +217,10 @@ class RadiusAuthRestHandler(admin.MConfigHandler):
     
     # List of fields and how they will be validated
     FIELD_VALIDATORS = {
-        PARAM_ENABLED  : BooleanFieldValidator(),
-        PARAM_DISABLED : BooleanFieldValidator(),
-        PARAM_DEBUG    : BooleanFieldValidator()
+        PARAM_ENABLED       : BooleanFieldValidator(),
+        PARAM_DISABLED      : BooleanFieldValidator(),
+        PARAM_DEBUG         : BooleanFieldValidator(),
+        PARAM_DEFAULT_ROLES : ListValidator()
         }
     
     # These are validators that work across several fields and need to occur on the cleaned set of fields
