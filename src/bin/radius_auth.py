@@ -27,10 +27,12 @@ def setup_logger(level, name, use_rotating_handler=True):
     if 'SPLUNK_HOME' in os.environ:
         logger.propagate = False # Prevent the log messages from being duplicated in the python.log file
         
+        log_file_path = os.path.join( os.environ['SPLUNK_HOME'], 'var', 'log', 'splunk', 'radius_auth.log' )
+        
         if use_rotating_handler:
-            file_handler = logging.handlers.RotatingFileHandler(os.environ['SPLUNK_HOME'] + '/var/log/splunk/radius_auth.log', maxBytes=25000000, backupCount=5)
+            file_handler = logging.handlers.RotatingFileHandler(log_file_path, maxBytes=25000000, backupCount=5)
         else:
-            file_handler = logging.FileHandler(os.environ['SPLUNK_HOME'] + '/var/log/splunk/radius_auth.log')
+            file_handler = logging.FileHandler(log_file_path)
             
         formatter = logging.Formatter('%(asctime)s %(levelname)s ' + name + ' - %(message)s')
         file_handler.setFormatter(formatter)
@@ -850,7 +852,7 @@ class RadiusAuth():
         roles_str -- The string containing a list of roles separated by a comma or colon
         """
     
-        if roles_str is not None:
+        if roles_str is not None and roles_str.strip() != "":
             return self.ROLES_SPLIT.split(roles_str)
     
     def is_sequence(self, arg):
