@@ -205,10 +205,12 @@ def setup_logger(level, name, use_rotating_handler=True):
     logger.propagate = False # Prevent the log messages from being duplicated in the python.log file
     logger.setLevel(level)
     
+    log_file_path = os.path.join( os.environ['SPLUNK_HOME'], 'var', 'log', 'splunk', 'radius_auth_rest_handler.log' )
+    
     if use_rotating_handler:
-        file_handler = logging.handlers.RotatingFileHandler(os.environ['SPLUNK_HOME'] + '/var/log/splunk/radius_auth_rest_handler.log', maxBytes=25000000, backupCount=5)
+        file_handler = logging.handlers.RotatingFileHandler(log_file_path, maxBytes=25000000, backupCount=5)
     else:
-        file_handler = logging.FileHandler(os.environ['SPLUNK_HOME'] + '/var/log/splunk/radius_auth_rest_handler.log')
+        file_handler = logging.FileHandler(log_file_path)
         
     formatter = logging.Formatter('%(asctime)s %(levelname)s ' + name + ' - %(message)s')
     file_handler.setFormatter(formatter)
