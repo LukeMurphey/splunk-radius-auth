@@ -82,9 +82,21 @@
           
           <legend>Role Assignments</legend>
           
-          The settings below are only required if you indeed to assign roles to users (other that the user role which is assigned by default).
+          <label>The settings below are only required if you indeed to assign roles to users (other that the user role which is assigned by default).
+          You will need to specify the vendor code and attribute ID such that it matches the settings on your RADIUS server.
+          See <a href="http://lukemurphey.net/projects/splunk-radius-auth/wiki/Configuring_Role">LukeMurphey.net for more info</a>.</label>
           ]]>
       </text>
+      
+      <input field="vendor_code">
+        <label>Enter the vendor code (the Splunk assigned value of 27389 is recommended)</label>
+        <type>text</type>
+      </input>
+      
+      <input field="roles_attribute_id">
+        <label>Enter the attribute ID</label>
+        <type>text</type>
+      </input>
       
       <input field="default_roles">
         <label>Enter the default roles that ought to be assigned if no roles were provided by the RADIUS server (comma separated list)</label>
@@ -96,12 +108,13 @@
           
           <legend>Test Settings</legend>
           
-          The settings below are only required if you want to perform a test before saving the settings.
+          <label>The settings below are only required if you want to perform a test before saving the settings.
           If the test fails, the settings will not be saved and you will be given a chance to update the settings
-          and try again.
+          and try again.</label>
           <div>
-          Leave the settings blank to skip the test.
+          <label>Leave the settings blank to skip the test.</label>
           </div>
+          
           ]]>
       </text>
       <input field="test_username">

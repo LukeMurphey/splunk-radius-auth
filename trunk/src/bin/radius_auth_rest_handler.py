@@ -4,7 +4,6 @@ import splunk
 import logging
 import logging.handlers
 import os
-import traceback
 import re
 
 from radius_auth import RadiusAuth
@@ -41,7 +40,7 @@ class StandardFieldValidator():
 
 class BooleanFieldValidator(StandardFieldValidator):
     """
-    Validates and converts field that represent booleans.
+    Validates and converts fields that represent booleans.
     """
     
     def to_python(self, name, value):
@@ -63,6 +62,31 @@ class BooleanFieldValidator(StandardFieldValidator):
 
         elif False:
             return "0"
+        
+        return str(value)
+    
+class IntegerFieldValidator(StandardFieldValidator):
+    """
+    Validates and converts fields that represent integers.
+    """
+    
+    def to_python(self, name, value):
+        
+        if value is None:
+            return None
+        
+        try:
+            return int( str(value).strip() )
+        except ValueError:
+            raise admin.ArgValidationException("The value of '%s' for the '%s' parameter is not a valid integer" % ( str(value), name))
+
+    def to_string(self, name, value):
+
+        if value is None or len(str(value).strip()) == 0:
+            return None
+
+        else:
+            return str(value)
         
         return str(value)
     
@@ -204,31 +228,44 @@ class RadiusAuthRestHandler(admin.MConfigHandler):
     # Below is the name of the conf file
     CONF_FILE = 'radius'
     
+    # Below are the default values for the RADIUS attribute
+    DEFAULT_RADIUS_VENDOR_CODE = 0 # Splunk has an enterprise ID of 27389 but 0 is retained for legacy installs
+    DEFAULT_RADIUS_ROLE_ATTRIBUTE_ID = 1
+    
     # Below are the list of parameters that are accepted
-    PARAM_DEBUG         = 'debug'
-    PARAM_IDENTIFIER    = 'identifier'
-    PARAM_SECRET        = 'secret'
-    PARAM_TEST_USERNAME = 'test_username'
-    PARAM_TEST_PASSWORD = 'test_password'
-    PARAM_DISABLED      = 'script_disabled'
-    PARAM_ENABLED       = 'script_enabled'
-    PARAM_SERVER        = 'server'
-    PARAM_ROLES_KEY     = 'roles_key'
-    PARAM_DEFAULT_ROLES = 'default_roles'
+    PARAM_DEBUG            = 'debug'
+    PARAM_IDENTIFIER       = 'identifier'
+    PARAM_SECRET           = 'secret'
+    PARAM_TEST_USERNAME    = 'test_username'
+    PARAM_TEST_PASSWORD    = 'test_password'
+    PARAM_DISABLED         = 'script_disabled'
+    PARAM_ENABLED          = 'script_enabled'
+    PARAM_SERVER           = 'server'
+    PARAM_ROLES_KEY        = 'roles_key'
+    PARAM_VENDOR_CODE      = 'vendor_code'
+    PARAM_ROLE_ATTRIBUTE   = 'roles_attribute_id'
+    PARAM_DEFAULT_ROLES    = 'default_roles'
     
     # Below are the list of valid and required parameters
-    VALID_PARAMS        = [ PARAM_SECRET, PARAM_SERVER, PARAM_TEST_USERNAME, PARAM_TEST_PASSWORD, PARAM_IDENTIFIER, PARAM_ENABLED, PARAM_DISABLED, PARAM_ROLES_KEY, PARAM_DEFAULT_ROLES ]
-    REQUIRED_PARAMS     = [ PARAM_SECRET, PARAM_SERVER ]
+    VALID_PARAMS           = [ PARAM_SECRET, PARAM_SERVER, PARAM_TEST_USERNAME,
+                               PARAM_TEST_PASSWORD, PARAM_IDENTIFIER, PARAM_ENABLED,
+                               PARAM_DISABLED, PARAM_ROLES_KEY, PARAM_DEFAULT_ROLES,
+                               PARAM_VENDOR_CODE, PARAM_ROLE_ATTRIBUTE ]
+    
+    REQUIRED_PARAMS        = [ PARAM_SECRET, PARAM_SERVER ]
     
     # These are parameters that are not persisted to the conf files; these are used within the REST handler only
-    UNSAVED_PARAMS  = [ PARAM_TEST_USERNAME, PARAM_TEST_PASSWORD, PARAM_ENABLED, PARAM_DISABLED ]
+    UNSAVED_PARAMS         = [ PARAM_TEST_USERNAME, PARAM_TEST_PASSWORD,
+                               PARAM_ENABLED, PARAM_DISABLED ]
     
     # List of fields and how they will be validated
     FIELD_VALIDATORS = {
-        PARAM_ENABLED       : BooleanFieldValidator(),
-        PARAM_DISABLED      : BooleanFieldValidator(),
-        PARAM_DEBUG         : BooleanFieldValidator(),
-        PARAM_DEFAULT_ROLES : ListValidator()
+        PARAM_ENABLED          : BooleanFieldValidator(),
+        PARAM_DISABLED         : BooleanFieldValidator(),
+        PARAM_DEBUG            : BooleanFieldValidator(),
+        PARAM_DEFAULT_ROLES    : ListValidator(),
+        PARAM_VENDOR_CODE : IntegerFieldValidator(),
+        PARAM_ROLE_ATTRIBUTE   : IntegerFieldValidator()
         }
     
     # These are validators that work across several fields and need to occur on the cleaned set of fields
@@ -240,6 +277,9 @@ class RadiusAuthRestHandler(admin.MConfigHandler):
     
     # REST endpoints
     REST_AUTH_PROVIDERS = "authentication/providers/Scripted"
+    
+    # Regular expression for parsing the roles_key
+    ROLES_KEY_PARSE_REGEX = re.compile("(?P<role_vendor_code>[0-9]+)([^,]*?,[^,]*?(?P<role_attribute_id>[0-9]+))?")
     
     def setup(self):
         """
@@ -256,6 +296,8 @@ class RadiusAuthRestHandler(admin.MConfigHandler):
             for arg in RadiusAuthRestHandler.VALID_PARAMS:
                 if arg not in RadiusAuthRestHandler.REQUIRED_PARAMS:
                     self.supportedArgs.addOptArg(arg)
+    
+    
     
     @staticmethod
     def convertParams(name, params, to_string=False):
@@ -276,9 +318,9 @@ class RadiusAuthRestHandler(admin.MConfigHandler):
 
             if validator is not None:
                 if to_string:
-                    new_params[key] = validator.to_string(name, value)
+                    new_params[key] = validator.to_string(key, value)
                 else:
-                    new_params[key] = validator.to_python(name, value)
+                    new_params[key] = validator.to_python(key, value)
             else:
                 new_params[key] = value
 
@@ -299,9 +341,30 @@ class RadiusAuthRestHandler(admin.MConfigHandler):
         # Set the settings
         if None != confDict:
             for stanza, settings in confDict.items():
+                
+                vendor_code, attribute_id = None, None
+                roles_key = None
+                
                 for key, val in settings.items():
                     confInfo[stanza].append(key, val)
                     
+                    if key == RadiusAuthRestHandler.PARAM_ROLE_ATTRIBUTE:
+                        attribute_id = val
+                        
+                    if key == RadiusAuthRestHandler.PARAM_VENDOR_CODE:
+                        vendor_code = val
+                        
+                    if key == RadiusAuthRestHandler.PARAM_ROLES_KEY:
+                        roles_key = val
+                    
+                # Set the attribute ID and vendor code from the roles key if necessary
+                if vendor_code is None and attribute_id is None and roles_key is not None:
+                    vendor_code, attribute_id = RadiusAuthRestHandler.parseRolesKey(roles_key, RadiusAuthRestHandler.DEFAULT_RADIUS_VENDOR_CODE, RadiusAuthRestHandler.DEFAULT_RADIUS_ROLE_ATTRIBUTE_ID, default_value="")
+                    
+                    confInfo[stanza].append(RadiusAuthRestHandler.PARAM_VENDOR_CODE, str(vendor_code))
+                    confInfo[stanza].append(RadiusAuthRestHandler.PARAM_ROLE_ATTRIBUTE, str(attribute_id))
+        
+        
         # Determine if the RADIUS script is enabled
         try:
             en = entity.getEntity(RadiusAuthRestHandler.REST_AUTH_PROVIDERS, "radius_auth_script", namespace=RadiusAuthRestHandler.APP_NAME, owner="nobody", sessionKey = self.getSessionKey() )
@@ -314,12 +377,10 @@ class RadiusAuthRestHandler(admin.MConfigHandler):
         except splunk.ResourceNotFound:
             disabled = True
         
-        # Set the appropriate parameter
+        # Set the appropriate parameter regarding whether the app is enabled or disabled
         if disabled:
-            confInfo["default"].append(RadiusAuthRestHandler.PARAM_DISABLED, "1")
             confInfo["default"].append(RadiusAuthRestHandler.PARAM_ENABLED, "0")
         else:
-            confInfo["default"].append(RadiusAuthRestHandler.PARAM_DISABLED, "0")
             confInfo["default"].append(RadiusAuthRestHandler.PARAM_ENABLED, "1")
 
     @log_function_invocation 
@@ -460,6 +521,7 @@ class RadiusAuthRestHandler(admin.MConfigHandler):
                 for stanza, settings in confDict.items():
                     if stanza == name:
                         is_found = True
+                        existing_settings = settings # In case, we need to view the old settings
                         break # Got the settings object we were looking for
             
             # Stop if we could not find the name  
@@ -480,7 +542,20 @@ class RadiusAuthRestHandler(admin.MConfigHandler):
             settings.update( new_settings )
             
             # Check the configuration settings
-            cleaned_params = RadiusAuthRestHandler.checkConf(new_settings, name, confInfo) 
+            cleaned_params = RadiusAuthRestHandler.checkConf(new_settings, name, confInfo)
+            
+            # Remove the deprecated roles_key if the vendor code and attribute are set
+            if RadiusAuthRestHandler.PARAM_VENDOR_CODE in cleaned_params and RadiusAuthRestHandler.PARAM_ROLE_ATTRIBUTE in cleaned_params and RadiusAuthRestHandler.PARAM_ROLES_KEY in existing_settings:
+                
+                # Get the current roles key so that we can determine if the roles key changed
+                current_roles_key = existing_settings[RadiusAuthRestHandler.PARAM_ROLES_KEY]
+                
+                if current_roles_key is not None:
+                    current_vendor_code, current_attribute_id = RadiusAuthRestHandler.parseRolesKey(current_roles_key, cleaned_params[RadiusAuthRestHandler.PARAM_VENDOR_CODE], cleaned_params[RadiusAuthRestHandler.PARAM_ROLE_ATTRIBUTE])
+                    
+                    # Set the roles key to an empty field if it is different
+                    if current_vendor_code != cleaned_params[RadiusAuthRestHandler.PARAM_VENDOR_CODE] or current_attribute_id != cleaned_params[RadiusAuthRestHandler.PARAM_ROLE_ATTRIBUTE]:
+                        cleaned_params[RadiusAuthRestHandler.PARAM_ROLES_KEY] = ''
             
             # Get the validated parameters
             validated_params = RadiusAuthRestHandler.convertParams( name, cleaned_params, True )
@@ -562,6 +637,65 @@ class RadiusAuthRestHandler(admin.MConfigHandler):
         # Return the cleaned parameters    
         return cleaned_params
         
+    @staticmethod
+    def stringToIntegerOrDefault( str_value, default_value=None ):
+        """
+        Converts the given string to an integer or returns none if it is not a valid integer.
+        
+        Arguments:
+        str_value -- A string value of the integer to be converted.
+        default_value -- The value to be used if the string is not an integer.
+        """
+        
+        # If the value is none, then don't try to convert it
+        if str_value is None:
+            return default_value
+        
+        # Try to convert the string to an integer
+        try:
+            return int(str(str_value).strip())
+        except ValueError:
+            # Return none if the value could not be converted
+            return default_value
+        
+    @staticmethod
+    def parseRolesKey( roles_key, default_vendor_code=27389, default_vendor_attribute_id=0, default_value=None ):
+        """
+        Parses the roles key that is provided by the RADIUS server into the vendor code and attribute. Returns default values if they cannot be parsed.
+        
+        Arguments:
+        roles_key -- The raw roles key that is provided by the RADIUS server
+        default_vendor_code -- The default vendor code that ought to be used
+        default_vendor_attribute -- The default vendor attribute ID that ought to be used
+        default_value -- The default value to be used if the attribute or vendor code is not a valid integer
+        """
+        
+        # If the roles key was not provided, then return the default
+        if roles_key is None:
+            return default_vendor_code, default_vendor_attribute_id
+        
+        # Try to parse the roles key
+        else:
+            
+            # Use the defaults unless otherwise changed
+            vendor_code, vendor_attribute_id = default_vendor_code, default_vendor_attribute_id
+            
+            # Parse the roles key
+            m = RadiusAuthRestHandler.ROLES_KEY_PARSE_REGEX.search(roles_key)
+            
+            # Get the results if available
+            if m is not None and m.groupdict() is not None:
+                
+                # Get the attributes
+                vendor_code = m.groupdict()["role_vendor_code"]
+                vendor_attribute_id = m.groupdict()["role_attribute_id"]
+                
+                # Convert the attributes to integer values
+                vendor_code, vendor_attribute_id = RadiusAuthRestHandler.stringToIntegerOrDefault(vendor_code, default_value), RadiusAuthRestHandler.stringToIntegerOrDefault(vendor_attribute_id, default_value)
+                
+            # Return the vendor code and attribute ID
+            return vendor_code, vendor_attribute_id
+            
       
 # initialize the handler
 admin.init(RadiusAuthRestHandler, admin.CONTEXT_NONE)
