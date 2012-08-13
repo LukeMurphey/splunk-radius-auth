@@ -80,7 +80,7 @@
       <text>
           <![CDATA[
           
-          <legend>Role Assignments</legend>
+          <legend>Role Assignment</legend>
           
           <label>The settings below are only required if you indeed to assign roles to users (other that the user role which is assigned by default).
           You will need to specify the vendor code and attribute ID such that it matches the settings on your RADIUS server.
