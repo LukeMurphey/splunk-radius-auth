@@ -589,26 +589,35 @@ class RadiusAuth():
     This class provides methods for authenticating to a RADIUS server and obtaining the necessary user information.
     """
     
+    DEFAULT_RADIUS_VENDOR_CODE = 0 # Splunk has an enterprise ID of 27389 but 0 is retained for legacy installs
+    DEFAULT_RADIUS_ROLE_ATTRIBUTE_ID = 1
+    
     RADIUS_IDENTIFIER = "identifier"
     RADIUS_SECRET     = "secret"
     RADIUS_SERVER     = "server"
     DEFAULT_ROLES     = "default_roles"
     ROLES_KEY         = "roles_key"
+    VENDOR_CODE       = 'vendor_code'
+    ROLE_ATTRIBUTE    = 'roles_attribute_id'
     
     # This regular expression splits up a list of roles
     ROLES_SPLIT  = re.compile("[:,]*")
     
+    # Regular expression for parsing the roles_key
+    ROLES_KEY_PARSE_REGEX = re.compile("(?P<role_vendor_code>[0-9]+)([^,]*?,[^,]*?(?P<role_attribute_id>[0-9]+))?")
     
-    def __init__(self, server = None, secret = None, identifier = None, roles_key="(0, 1)", default_roles=None):
+    def __init__(self, server = None, secret = None, identifier = None, roles_key="(0, 1)", default_roles=None, vendor_code=None, roles_attribute_id=None):
         """
         Sets up a class that can be used for authenticating against a RADIUS server.
         
         Arguments:
         server -- The RADIUS server to connect to (examples: radius.acme.net, radius.acme.net:10812)
         secret -- The secret used to authenticate to the RADIUS server
-        identifier -- The identifier assocaited with the RADIUS client
+        identifier -- The identifier associated with the RADIUS client
         roles_key -- The key that identifies the RADIUS attribute that defines the user's role
         default_roles -- The list of default roles that ought to be used if no roles could be found for the user (needs to be an array of strings)
+        vendor_code -- The vendor code that ought to be used for identifying the roles attribute from the server
+        roles_attribute_id -- The attribute ID that ought to be used for identifying the roles attribute from the server
         """
         
         self.server     = server
@@ -620,8 +629,93 @@ class RadiusAuth():
         else:
             self.default_roles = None
         
+        
         # Set up the key that we will use to obtain the roles information
         self.roles_key = roles_key
+        self.configure_roles_attribute(roles_key, vendor_code, roles_attribute_id)
+        
+    def configure_roles_attribute(self, roles_key, vendor_code, roles_attribute_id):
+        """
+        Configures the attributes for obtaining the role information from the RADIUS server. As a result of calling this
+        function, the vendor code and roles attribute ID will be set
+        
+        Arguments:
+        roles_key -- The key that identifies the RADIUS attribute that defines the user's role
+        vendor_code -- The vendor code that ought to be used for identifying the roles attribute from the server
+        roles_attribute_id -- The attribute ID that ought to be used for identifying the roles attribute from the server
+        """
+        
+        
+        # Load the vendor code from the roles key if not specifically provided
+        if vendor_code is None and roles_key is not None:
+            self.vendor_code, self.roles_attribute_id = RadiusAuth.parseRolesKey(self, roles_key, RadiusAuth.DEFAULT_RADIUS_VENDOR_CODE, RadiusAuth.DEFAULT_RADIUS_ROLE_ATTRIBUTE_ID, None)
+        
+        # Save the vendor code
+        else:
+            self.vendor_code = vendor_code
+            
+        # Save the attribute ID
+        if roles_attribute_id is not None:
+            self.roles_attribute_id = roles_attribute_id
+        
+    def parseRolesKey( self, roles_key, default_vendor_code=27389, default_vendor_attribute_id=0, default_value=None ):
+        """
+        Parses the roles key that is provided by the RADIUS server into the vendor code and attribute. Returns default values if they cannot be parsed.
+        
+        Arguments:
+        roles_key -- The raw roles key that is provided by the RADIUS server
+        default_vendor_code -- The default vendor code that ought to be used
+        default_vendor_attribute -- The default vendor attribute ID that ought to be used
+        default_value -- The default value to be used if the attribute or vendor code is not a valid integer
+        """
+        
+        # If the roles key was not provided, then return the default
+        if roles_key is None:
+            return default_vendor_code, default_vendor_attribute_id
+        
+        # Try to parse the roles key
+        else:
+            
+            # Use the defaults unless otherwise changed
+            vendor_code, vendor_attribute_id = default_vendor_code, default_vendor_attribute_id
+            
+            # Parse the roles key
+            m = RadiusAuth.ROLES_KEY_PARSE_REGEX.search(roles_key)
+            
+            # Get the results if available
+            if m is not None and m.groupdict() is not None:
+                
+                # Get the attributes
+                vendor_code = m.groupdict()["role_vendor_code"]
+                vendor_attribute_id = m.groupdict()["role_attribute_id"]
+                
+                # Convert the attributes to integer values
+                vendor_code, vendor_attribute_id = RadiusAuth.stringToIntegerOrDefault(vendor_code, default_value), RadiusAuth.stringToIntegerOrDefault(vendor_attribute_id, default_value)
+                
+            # Return the vendor code and attribute ID
+            return vendor_code, vendor_attribute_id
+        
+    @staticmethod
+    def stringToIntegerOrDefault( str_value, default_value=None ):
+        """
+        Converts the given string to an integer or returns the default value if it is not a valid integer.
+        
+        Arguments:
+        str_value -- A string value of the integer to be converted.
+        default_value -- The value to be used if the string is not an integer.
+        """
+        
+        # If the value is none, then don't try to convert it
+        if str_value is None:
+            return default_value
+        
+        # Try to convert the string to an integer
+        try:
+            return int(str(str_value).strip())
+        except ValueError:
+            # Return none if the value could not be converted
+            return default_value
+        
         
     def checkValues(self):
         """
@@ -674,11 +768,29 @@ class RadiusAuth():
         combined = combined_conf.get("default")
         
         # Initialize the class
-        self.identifier     = combined.get(RadiusAuth.RADIUS_IDENTIFIER, "Splunk")
-        self.server         = combined.get(RadiusAuth.RADIUS_SERVER, None)
-        self.secret         = combined.get(RadiusAuth.RADIUS_SECRET, None)
-        self.roles_key      = combined.get(RadiusAuth.ROLES_KEY, None)
-        self.default_roles = self.splitRoles( combined.get(RadiusAuth.DEFAULT_ROLES, None) )
+        self.identifier         = combined.get(RadiusAuth.RADIUS_IDENTIFIER, "Splunk")
+        self.server             = combined.get(RadiusAuth.RADIUS_SERVER, None)
+        self.secret             = combined.get(RadiusAuth.RADIUS_SECRET, None)
+        self.roles_key          = combined.get(RadiusAuth.ROLES_KEY, None)
+        self.default_roles      = self.splitRoles( combined.get(RadiusAuth.DEFAULT_ROLES, None) )
+        
+        # Get the roles attribute ID and vendor as integers
+        roles_attribute_id_tmp  = combined.get(RadiusAuth.ROLE_ATTRIBUTE, RadiusAuth.DEFAULT_RADIUS_ROLE_ATTRIBUTE_ID)
+        vendor_code_tmp         = combined.get(RadiusAuth.VENDOR_CODE, RadiusAuth.DEFAULT_RADIUS_VENDOR_CODE)
+        
+        try:
+            roles_attribute_id = int(roles_attribute_id_tmp)
+        except ValueError:
+            logger.warn("The roles attribute is not a valid integer (is %s)" % (roles_attribute_id_tmp) )
+            roles_attribute_id = RadiusAuth.DEFAULT_RADIUS_ROLE_ATTRIBUTE_ID
+            
+        try:
+            vendor_code = int(vendor_code_tmp)
+        except ValueError:
+            logger.warn("The vendor code is not a valid integer (is %s)" % (vendor_code_tmp) )
+            vendor_code = RadiusAuth.DEFAULT_RADIUS_VENDOR_CODE
+        
+        self.configure_roles_attribute(self.roles_key, vendor_code, roles_attribute_id)
         
         # Check the values
         self.checkValues()
@@ -741,6 +853,101 @@ class RadiusAuth():
         if roles_str is not None:
             return self.ROLES_SPLIT.split(roles_str)
     
+    def is_sequence(self, arg):
+        """
+        Determine if the providing argument is a list of some sort (but not a string which can look like a list).
+        
+        Argument:
+        arg -- The item to be tested for whether it is a list
+        """
+        
+        return (not hasattr(arg, "strip") and
+                hasattr(arg, "__getitem__") or
+                hasattr(arg, "__iter__"))
+    
+    def getRolesFromReply(self, reply):
+        """
+        Get the roles list from the reply. Return the default roles if they were not provided by the server.
+        
+        Argument:
+        reply -- The reply from the RADIUS server
+        """
+        
+        roles = []
+        roles_loaded_from_server = False
+        
+        roles_str = None
+                
+        # Find the roles key if it exists
+        for k, v in reply.items():
+            
+            # Try to match the reply attribute based on the vendor code and attribute ID
+            if self.vendor_code is not None:
+                try:
+                    
+                    # Parse the attribute
+                    if self.is_sequence(k) and len(k) >= 2:
+                        vendor_code, roles_attribute_id = k[0], k[1]
+                    elif self.is_sequence(k) and len(k) == 1:
+                        vendor_code, roles_attribute_id = k[0], None
+                    else:
+                        vendor_code, roles_attribute_id = k, None
+                    
+                    # Determine if this is the attribute that is expected
+                    if vendor_code == self.vendor_code and roles_attribute_id == self.roles_attribute_id:
+                        roles_str = v
+                    
+                except ValueError:
+                    # The attribute could not be parsed, ignore it
+                    pass
+            
+            # Try to match the reply attribute based on the deprecated roles_key
+            if roles_str is None and str(k) == str(self.roles_key) and len(v[0].strip()) > 0:
+                roles_str = v
+            
+            # If we found a roles_str, go ahead and split it up
+            if roles_str is not None:
+                roles = self.splitRoles(v[0])
+                roles_loaded_from_server = True
+                
+                # Found what we needed, stop here
+                break
+        
+        # Set the roles to the default if defaults are available and if we were not able to load any from the server
+        if not roles_loaded_from_server and self.default_roles is not None:
+            roles = self.default_roles
+                
+        return roles
+    
+    def logReplyItems(self, reply):
+        """
+        Log the attributes returned from the RADIUS server.
+        
+        Argument:
+        reply -- The reply from the RADIUS server
+        """
+        
+        attrs = []
+        
+        for k, v in reply.items():
+            
+            # Break up the attribute into the vendor code and attribute
+            if self.is_sequence(k) and len(k) >= 2:
+                vendor_code, attribute_id = k[0], k[1]
+            elif self.is_sequence(k) and len(k) == 1:
+                vendor_code, attribute_id = k[0], None
+            else:
+                vendor_code, attribute_id = k, None
+            
+            # Add the attribute to the list
+            if attribute_id is not None:
+                attrs.append( "vendor_code_%s_attribute_%s = %s" % (str(vendor_code), str(attribute_id), str(v) ) )
+            else:
+                attrs.append( "vendor_code_%s_attribute_na = %s" % (str(vendor_code), str(v) ) )
+        
+        # Send out the message
+        logger.debug( "Received the following fields upon login: %s" % ( ", ".join(attrs) ) )
+    
     def authenticate(self, username, password, update_user_info=True, directory=None, log_reply_items=True ):
         """
         Perform an authentication attempt to the RADIUS server. Return true if the authentication succeeded.
@@ -778,30 +985,13 @@ class RadiusAuth():
         if auth_suceeded:
             
             # Log the reply items that were received
-            logger.debug( "Got the following fields upon login: %s" % ( str(reply.items()) ) )
+            self.logReplyItems(reply)
             
             # Get the roles
-            if update_user_info and self.roles_key is not None:
+            if update_user_info and (self.roles_key is not None or self.vendor_code is not None):
                 
-                roles = []
-                roles_loaded_from_server = False
-                
-                # Find the roles key if it exists
-                for k, v in reply.items():
-                    
-                    # Determine if this is the roles string
-                    if str(k) == str(self.roles_key) and len(v[0].split()) > 0:
-                        
-                        # Parse out the roles
-                        roles = self.splitRoles(v[0])
-                        roles_loaded_from_server = True
-                        
-                        # Found what we needed, stop here
-                        break
-                
-                # Set the roles to the default if defaults are available and if we were not able to load any from the server
-                if not roles_loaded_from_server and self.default_roles is not None:
-                    roles = self.default_roles
+                # Get the roles from the reply
+                roles = self.getRolesFromReply(reply)
                     
                 # Make a new user info object
                 user = UserInfo( username, None, roles)

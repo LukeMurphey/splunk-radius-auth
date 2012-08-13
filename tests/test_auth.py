@@ -12,6 +12,12 @@ from radius_auth import *
 
 class RadiusAuthAppTest(unittest.TestCase):
     
+    def toInt(self, str_int):
+        if str_int is None:
+            return None
+        else:
+            return int(str_int)
+    
     def loadConfig(self, properties_file=None):
         
         if properties_file is None:
@@ -33,7 +39,11 @@ class RadiusAuthAppTest(unittest.TestCase):
         self.password = settings["value.test.radius.password"]
         self.server = settings["value.test.radius.server"]
         self.secret = settings["value.test.radius.secret"]
-        self.identifier = settings["value.test.radius.identifier"]
+        self.identifier = settings.get("value.test.radius.identifier", "Splunk")
+        
+        self.vendor_code = self.toInt(settings.get("value.test.radius.vendor_code", None))
+        self.roles_attribute_id = self.toInt(settings.get("value.test.radius.roles_attribute_id", None))
+        self.roles_key = settings.get("value.test.radius.roles_key", "(0, 1)")
 
     def setUp(self):
         self.loadConfig()
@@ -111,9 +121,9 @@ class TestRadiusAuth(RadiusAuthAppTest):
         
         self.assertFalse(result)
         
-    def test_auth_auth_info(self):
+    def test_auth_auth_info_roles_key(self):
         
-        ra = RadiusAuth(self.server, self.secret, self.identifier)
+        ra = RadiusAuth(self.server, self.secret, self.identifier, self.roles_key)
         
         result = ra.authenticate(self.username, self.password, update_user_info=True, directory=self.tmp_dir)
         
@@ -128,10 +138,39 @@ class TestRadiusAuth(RadiusAuthAppTest):
         
         # Make sure the roles exist:
         if 'can_delete' not in user.roles:
-            self.fail("can_delete not in the roles")
+            self.fail("can_delete not in the roles (%s)" % (user.roles) )
             
         if 'admin' not in user.roles:
-            self.fail("admin not in the roles")
+            self.fail("admin not in the roles (%s)" % (user.roles) )
+            
+    def test_auth_auth_info(self):
+        
+        ra = RadiusAuth(self.server, self.secret, self.identifier, vendor_code=self.vendor_code, roles_attribute_id=self.roles_attribute_id)
+        
+        result = ra.authenticate(self.username, self.password, update_user_info=True, directory=self.tmp_dir)
+        
+        self.assertTrue(result)
+        users = UserInfo.getAllUsers( self.tmp_dir )
+        
+        self.assertEquals( len(users), 1)
+        
+        # Get the user
+        user = users[0]
+        self.assertTrue( user.username, self.username)
+        
+        # Make sure the roles exist:
+        if 'can_delete' not in user.roles:
+            self.fail("can_delete not in the roles (%s)" % (user.roles) )
+            
+        if 'admin' not in user.roles:
+            self.fail("admin not in the roles (%s)" % (user.roles) )
+            
+    def test_auth_auth_info_parse_roles_key(self):
+        
+        ra = RadiusAuth(self.server, self.secret, self.identifier, roles_key="(28, 15)")
+        
+        self.assertEquals(ra.vendor_code, 28)
+        self.assertEquals(ra.roles_attribute_id, 15)
             
     def test_auth_auth_info_custom_roles_key(self):
         
@@ -234,6 +273,38 @@ class TestRadiusAuth(RadiusAuthAppTest):
         
         self.assertEquals( sorted(ra.default_roles), sorted(["analyst", "manager"]))
         
+    def test_load_conf_vendor_attribute(self):
+        
+        ra = RadiusAuth()
+        
+        ra.loadConf("test_load_conf_vendor_attribute")
+        
+        self.assertEquals(ra.server, "auth.server1.acme.com")
+        self.assertEquals(ra.secret, "changeme")
+        self.assertEquals(ra.identifier, "server1")
+        
+        self.assertEquals(ra.roles_key, None)
+        self.assertEquals(ra.roles_attribute_id, 128)
+        self.assertEquals(ra.vendor_code, 64)
+        
+        self.assertEquals( sorted(ra.default_roles), sorted(["analyst", "manager"]))
+        
+    def test_load_conf_vendor_attribute_invalid(self):
+        
+        ra = RadiusAuth()
+        
+        ra.loadConf("test_load_conf_vendor_attribute_invalid")
+        
+        self.assertEquals(ra.server, "auth.server1.acme.com")
+        self.assertEquals(ra.secret, "changeme")
+        self.assertEquals(ra.identifier, "server1")
+        
+        self.assertEquals(ra.roles_key, None)
+        self.assertEquals(ra.roles_attribute_id, 1)
+        self.assertEquals(ra.vendor_code, 0)
+        
+        self.assertEquals( sorted(ra.default_roles), sorted(["analyst", "manager"]))
+        
     def test_load_conf_bom(self):
         
         ra = RadiusAuth()
@@ -242,6 +313,10 @@ class TestRadiusAuth(RadiusAuthAppTest):
         
         self.assertEquals(ra.server, "auth.server1.acme.com")
         self.assertEquals(ra.secret, "changeme")
+        
+        self.assertEquals(ra.roles_attribute_id, 1)
+        self.assertEquals(ra.vendor_code, 0)
+        
         
 class TestUserInfo(unittest.TestCase):
     
