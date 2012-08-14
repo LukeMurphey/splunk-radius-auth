@@ -183,9 +183,9 @@ def log_function_invocation(fx):
     fx -- The function to log the starting and stopping of
     """
     
-    def wrapper(self, *args):
+    def wrapper(self, *args, **kwargs):
         logger.debug( "Entering: " + fx.__name__ )
-        r = fx(self, *args)
+        r = fx(self, *args, **kwargs)
         logger.debug( "Exited: " + fx.__name__ )
         
         return r
@@ -398,32 +398,6 @@ class RadiusAuthRestHandler(admin.MConfigHandler):
         entity.refreshEntities('properties/radius', sessionKey=self.getSessionKey())
     
     @log_function_invocation
-    def setCacheTiming(self, getUserInfoTTL= "10s", getUsersTTL = "1min", userLoginTTL = "2mins"):
-        """
-        Set the cache timing of the auth script.
-        
-        Arguments:
-        getUserInfoTTL -- The frequency to refresh user info
-        getUsersTTL -- The frequency to refresh the users list
-        userLoginTTL -- The frequency to retry user logins
-        """
-        
-        try:
-            en = entity.getEntity(RadiusAuthRestHandler.REST_AUTH_PROVIDERS, "cacheTiming", namespace=RadiusAuthRestHandler.APP_NAME, owner="nobody", sessionKey = self.getSessionKey() )
-        except splunk.ResourceNotFound:
-            en = entity.getEntity(RadiusAuthRestHandler.REST_AUTH_PROVIDERS, "_new", namespace=RadiusAuthRestHandler.APP_NAME, owner="nobody", sessionKey = self.getSessionKey() )
-            en['name'] = "cacheTiming"
-            en.owner = "nobody"
-        
-        # Set the values
-        en['getUserInfoTTL'] = getUserInfoTTL
-        en['getUsersTTL']    = getUsersTTL
-        en['userLoginTTL']   = userLoginTTL
-        
-        # Set the entity
-        entity.setEntity( en, sessionKey = self.getSessionKey() )
-    
-    @log_function_invocation
     def setAuthenticationScriptStatus(self, enabled, stanza= "radius_auth_script"):
         """
         Set the status of the authentication script.
@@ -458,12 +432,15 @@ class RadiusAuthRestHandler(admin.MConfigHandler):
             d[name] = None
     
     @log_function_invocation
-    def configureAuthenticationScript(self, enabled=True):
+    def configureAuthenticationScript(self, enabled=True, getUserInfoTTL= "10s", getUsersTTL = "1min", userLoginTTL = "30s", set_timing_only_if_necessary=True):
         """
         Setup the auth script so that it is used for Splunk authentication.
         
         Arguments:
         enabled -- Indicates if the authentication script ought to be set as enabled (otherwise, it will be enabled by default)
+        getUserInfoTTL -- The frequency to refresh user info
+        getUsersTTL -- The frequency to refresh the users list
+        userLoginTTL -- The frequency to retry user logins
         """
         
         # Get the existing entity if it exists
@@ -486,9 +463,15 @@ class RadiusAuthRestHandler(admin.MConfigHandler):
         # Create the path to auth script
         radius_auth = os.path.join( "$SPLUNK_HOME", "etc", "apps", RadiusAuthRestHandler.APP_NAME, "bin", RadiusAuthRestHandler.AUTH_SCRIPT_FILE )
         
-        # Set the script path should lookf something like:
+        # Set the script path should look something like:
         #     scriptPath = $SPLUNK_HOME/bin/python $SPLUNK_HOME/bin/<scriptname.py>
         en['scriptPath'] = '"' + python_path + '"' + ' "' + radius_auth + '"'
+        
+        # Set the cache timing
+        if enabled:
+            en['getUserInfoTTL'] = getUserInfoTTL
+            en['getUsersTTL']    = getUsersTTL
+            en['userLoginTTL']   = userLoginTTL
         
         # Set the entity
         entity.setEntity( en, sessionKey = self.getSessionKey() )
