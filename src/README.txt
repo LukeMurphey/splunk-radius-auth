@@ -61,4 +61,4 @@ Change History
  * 1.1  : added debug logging of the list of fields provided by the RADIUS server
           added ability to specify the RADIUS attribute for finding the roles list
           added ability to define default roles
-          fixed issue where cache timing may not be set correctly
+          setup now sets the cache timing in order to prevent cases where it may not be set correctly
