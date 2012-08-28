@@ -23,7 +23,7 @@ class StandardFieldValidator():
         """
         
         if len( str(value).strip() ) == 0:
-            raise admin.ArgValidationException("The value for the '%s' parameter cannot be empty" % ( str(value), name))
+            raise admin.ArgValidationException("The value for the '%s' parameter cannot be empty" % (name))
         
         return value
 
