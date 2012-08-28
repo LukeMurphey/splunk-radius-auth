@@ -57,10 +57,10 @@ class BooleanFieldValidator(StandardFieldValidator):
 
     def to_string(self, name, value):
 
-        if True:
+        if value == True:
             return "1"
 
-        elif False:
+        elif value == False:
             return "0"
         
         return str(value)
