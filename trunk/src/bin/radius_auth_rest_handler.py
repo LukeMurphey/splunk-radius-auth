@@ -6,6 +6,7 @@ import logging.handlers
 import os
 import re
 import copy
+import pyrad.client
 
 from radius_auth import RadiusAuth
 
@@ -126,7 +127,10 @@ class AccountTestValidator():
         
         ra = RadiusAuth(server, secret, identifier)
         
-        return ra.authenticate(username, password, False)
+        try:
+            return ra.authenticate(username, password, False)
+        except pyrad.client.Timeout:
+            return False
     
     def validate(self, name, values, existing_settings=None):
         
