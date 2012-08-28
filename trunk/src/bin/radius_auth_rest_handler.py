@@ -5,6 +5,7 @@ import logging
 import logging.handlers
 import os
 import re
+import copy
 
 from radius_auth import RadiusAuth
 
@@ -127,7 +128,7 @@ class AccountTestValidator():
         
         return ra.authenticate(username, password, False)
     
-    def validate(self, name, values):
+    def validate(self, name, values, existing_settings=None):
         
         # Determine if a username and a password were provided
         password_provided = 'test_password' in values and values['test_password'] is not None and len(values['test_password']) > 0
@@ -141,9 +142,17 @@ class AccountTestValidator():
         if password_provided and not username_provided:
             raise admin.ArgValidationException( "A password to test was provided but a username was not" )
         
+        # Use the settings from the values if provided, otherwise, use the old settings
+        if values.get('secret', None) is not None and len(str(values['secret']).strip()) > 0:
+            secret = values['secret']
+        elif existing_settings is not None and existing_settings.get('secret', None) is not None and len(existing_settings.get('secret', None).strip()) > 0:
+            secret = existing_settings['secret']
+        else:
+            secret = None
+        
         # Test the settings if a test username and password provided
         if password_provided and username_provided and not self.testSettings( values['server'],
-                                                                              values['secret'],
+                                                                              secret,
                                                                               values.get('identifier', None),
                                                                               values['test_username'],
                                                                               values['test_password'] ):
@@ -506,7 +515,7 @@ class RadiusAuthRestHandler(admin.MConfigHandler):
                 for stanza, settings in confDict.items():
                     if stanza == name:
                         is_found = True
-                        existing_settings = settings # In case, we need to view the old settings
+                        existing_settings = copy.copy(settings) # In case, we need to view the old settings
                         break # Got the settings object we were looking for
             
             # Stop if we could not find the name  
@@ -527,7 +536,7 @@ class RadiusAuthRestHandler(admin.MConfigHandler):
             settings.update( new_settings )
             
             # Check the configuration settings
-            cleaned_params = RadiusAuthRestHandler.checkConf(new_settings, name, confInfo)
+            cleaned_params = RadiusAuthRestHandler.checkConf(new_settings, name, confInfo, existing_settings=existing_settings)
             
             # Remove the deprecated roles_key if the vendor code and attribute are set
             if RadiusAuthRestHandler.PARAM_VENDOR_CODE in cleaned_params and RadiusAuthRestHandler.PARAM_ROLE_ATTRIBUTE in cleaned_params and RadiusAuthRestHandler.PARAM_ROLES_KEY in existing_settings:
@@ -565,7 +574,7 @@ class RadiusAuthRestHandler(admin.MConfigHandler):
             raise e
         
     @staticmethod
-    def checkConf(settings, stanza=None, confInfo=None, onlyCheckProvidedFields=False):
+    def checkConf(settings, stanza=None, confInfo=None, onlyCheckProvidedFields=False, existing_settings=None):
         """
         Checks the settings and raises an exception if the configuration is invalid.
         
@@ -573,7 +582,8 @@ class RadiusAuthRestHandler(admin.MConfigHandler):
         settings -- The settings dictionary the represents the configuration to be checked
         stanza -- The name of the stanza being checked
         confInfo -- The confinfo object that was received into the REST handler
-        onlyCheckProvidedFields -- Indicates if we ought to assume that this is only part of the fields and thus should not alert if some necessary fields are missing 
+        onlyCheckProvidedFields -- Indicates if we ought to assume that this is only part of the fields and thus should not alert if some necessary fields are missing
+        existing_settings -- The existing settings before the current changes are applied
         """
 
         # Add all of the configuration items to the confInfo object so that the REST endpoint lists them (even if they are wrong)
@@ -593,7 +603,7 @@ class RadiusAuthRestHandler(admin.MConfigHandler):
         # are observed. An empty list at the end of the config check indicates that all necessary
         # fields where provided.
         required_fields = RadiusAuthRestHandler.REQUIRED_PARAMS[:]
-      
+        
         # Check each of the settings
         for key, val in settings.items():
             
@@ -612,7 +622,7 @@ class RadiusAuthRestHandler(admin.MConfigHandler):
         
         # Run the general validators
         for validator in RadiusAuthRestHandler.GENERAL_VALIDATORS:
-            validator.validate( stanza, cleaned_params )
+            validator.validate( stanza, cleaned_params, existing_settings )
         
         # Remove the parameters that are not intended to be saved
         for to_remove in RadiusAuthRestHandler.UNSAVED_PARAMS:
