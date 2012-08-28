@@ -28,7 +28,7 @@ Configuring Splunk
 
 Run setup and specify the information about your RADIUS server. Make sure to select "Enabled RADIUS authentication" to enable the script.
 
-It is recommended that you specify a test account so that you can verify that the settings are correct. The setup page will not save the settings unless the test account works which helps ensure that changse are valid before being saved.
+It is recommended that you specify a test account so that you can verify that the settings are correct. The setup page will not save the settings unless the test account works which helps ensure that changes are valid before being saved.
 
 
 
@@ -56,9 +56,15 @@ Go to the following website if you need support:
 Change History
 ================================================
 
- * 1.0  : initial version
- * 1.0.1: fixed issue where setup app did not configure the authentication script correctly
- * 1.1  : added debug logging of the list of fields provided by the RADIUS server
-          added ability to specify the RADIUS attribute for finding the roles list
-          added ability to define default roles
-          setup now sets the cache timing in order to prevent cases where it may not be set correctly
++---------+---------------------------------------------------------------------------------------------------------------+
+| Version |  Changes                                                                                                      |
++---------+---------------------------------------------------------------------------------------------------------------+
+| 1.0     | Initial version                                                                                               |
+| 1.0.1   | fixed issue where setup app did not configure the authentication script correctly                             |                                                                                                                                                                            |
+| 1.1     | added debug logging of the list of fields provided by the RADIUS server                                       |
+|         | added ability to specify the RADIUS attribute for finding the roles list                                      |
+|         | added ability to define default roles                                                                         |
+|         | setup now sets the cache timing in order to prevent cases where it may not be set correctly                   |
+| 1.1.1   | the setup screen now allows users to test an account without entering the secret if it is already defined     |
+|         | other minor bug fixes                                                                                         |
++---------+---------------------------------------------------------------------------------------------------------------+
