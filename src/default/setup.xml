@@ -10,14 +10,22 @@
           <script language="javascript">
               
               $(document).ready(function() {
-                $('#\\/admin\\/radius_auth\\/_new\\/name_id').attr("placeholder", "e.g. radius.acme.net:11812");
+                $('#\\/admin\\/radius_auth\\/default\\/server_id').attr("placeholder", "e.g. radius.acme.net:11812");
               
-                $('#\\/admin\\/radius_auth\\/_new\\/identifier_id').attr("placeholder", "e.g. Splunk");
+                $('#\\/admin\\/radius_auth\\/default\\/identifier_id').attr("placeholder", "e.g. Splunk");
                 
                 if ( $("#\\/admin\\/radius_auth\\/default\\/secret_id").attr("value").length > 0 ){
                     $("#\\/admin\\/radius_auth\\/default\\/secret_id").attr("value", "");
                     
                     $("#\\/admin\\/radius_auth\\/default\\/secret_id").attr("placeholder", "Leave blank to use existing secret");
+                }
+                
+                $('#\\/admin\\/radius_auth\\/default\\/backup_server_id').attr("placeholder", "e.g. radius.acme.net:11812");
+                
+                if ( $("#\\/admin\\/radius_auth\\/default\\/backup_server_secret_id").attr("value").length > 0 ){
+                    $("#\\/admin\\/radius_auth\\/default\\/backup_server_secret_id").attr("value", "");
+                    
+                    $("#\\/admin\\/radius_auth\\/default\\/backup_server_secret_id").attr("placeholder", "Leave blank to use existing secret");
                 }
               });
               
@@ -80,11 +88,31 @@
       <text>
           <![CDATA[
           
+          <legend>Backup Server</legend>
+          
+          <label>The settings below are only required if you want to use a backup server (in case the primary fails).
+          See <a target="_blank" href="http://lukemurphey.net/projects/splunk-radius-auth/wiki/Using_a_Backup_Server">LukeMurphey.net for more info</a>.</label>
+          ]]>
+      </text>
+      
+      <input field="backup_server">
+        <label>Enter the server name of the backup server; include the port if it is non-standard (e.g. "radius.acme.net:11812")</label>
+        <type>text</type>
+      </input>
+      
+      <input field="backup_server_secret">
+        <label>Enter the RADIUS server password/secret</label>
+        <type>password</type>
+      </input>
+      
+      <text>
+          <![CDATA[
+          
           <legend>Role Assignment</legend>
           
-          <label>The settings below are only required if you indeed to assign roles to users (other that the user role which is assigned by default).
+          <label>The settings below are only required if you intend to assign roles to users (other that the user role which is assigned by default).
           You will need to specify the vendor code and attribute ID such that it matches the settings on your RADIUS server.
-          See <a href="http://lukemurphey.net/projects/splunk-radius-auth/wiki/Configuring_Role">LukeMurphey.net for more info</a>.</label>
+          See <a target="_blank" href="http://lukemurphey.net/projects/splunk-radius-auth/wiki/Configuring_Roles">LukeMurphey.net for more info</a>.</label>
           ]]>
       </text>
       
