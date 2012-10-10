@@ -225,6 +225,22 @@ class TestRadiusAuth(RadiusAuthAppTest):
         
         self.assertFalse(result)
         
+    def test_auth_backup(self):
+        
+        ra = RadiusAuth("127.0.0.1", "invalid_password", self.identifier, backup_server=self.server, backup_server_secret=self.secret)
+        
+        result = ra.authenticate(self.username, self.password, update_user_info=False)
+        
+        self.assertTrue(result)
+        
+    def test_auth_backup_no_backup_password(self):
+        # The script should use the secret from the primary server if the password for the backup server is blank
+        ra = RadiusAuth("127.0.0.1", self.secret, self.identifier, backup_server=self.server, backup_server_secret=None)
+        
+        result = ra.authenticate(self.username, self.password, update_user_info=False)
+        
+        self.assertTrue(result)
+        
     def test_load_conf(self):
         
         ra = RadiusAuth()
@@ -233,6 +249,8 @@ class TestRadiusAuth(RadiusAuthAppTest):
         
         self.assertEquals(ra.server, "auth.server1.acme.com")
         self.assertEquals(ra.secret, "changeme")
+        self.assertEquals(ra.backup_server, "auth.server2.acme.com")
+        self.assertEquals(ra.backup_server_secret, "changeme2")
         self.assertEquals(ra.identifier, "server1")
         
     def test_split_roles_colon_delimited(self):

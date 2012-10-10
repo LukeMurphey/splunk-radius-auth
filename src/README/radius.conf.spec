@@ -13,33 +13,41 @@
 #****************************************************************************** 
 # These options must be set under an [default] entry.
 #****************************************************************************** 
-server = <server>
+server = <string>
     * Defines the radius server that will be used. Can include a port (e.g. "1.2.3.4:10812").
     * Examples: "1.2.3.4", "1.2.3.4:10812"
 
-secret = <secret>
+secret = <string>
     * Defines the secret that will be used in order to authenticate to the RADIUS server
 
-identifier = <identifier>
+backup_server = <string>
+    * Defines the radius server that will be used if the primary is unavailable. Can include a port (e.g. "1.2.3.4:10812").
+    * Examples: "1.2.3.4", "1.2.3.4:10812"
+    
+backup_server_secret = <string>
+    * Defines the secret that will be used in order to authenticate to the backup RADIUS server
+    * The secret from the primary server will be used to authenticate to the backup server if this is undefined
+
+identifier = <string>
     * Specifies a string that will identify the device performing authentication request
     * Defaults to "Splunk"
 
-roles_attribute_id = <roles_attribute_id>
+roles_attribute_id = <string>
     * Specifies which RADIUS attribute ought to be used for determining the user roles
     * Review the radius app logs (index=_internal sourcetype=radius_auth) if you have set the roles on the RADIUS server but are not sure what the attribute ID is.
     * Example: 1
 
-vendor_code = <vendor_code>
+vendor_code = <string>
     * Specifies which RADIUS attribute ought to be used for determining the user roles
     * Review the radius app logs (index=_internal sourcetype=radius_auth) if you have set the roles on the RADIUS server but are not sure what the vendor code is.
     * Example: 27389
 
-default_roles = <default_roles>
+default_roles = <list>
     * Specifies what roles ought to be assigned to users if no list of roles was provided by the RADIUS server
     * Needs to be a colon or comma separated list
     * Examples: "analyst:manager:admin", "analyst,manager,admin"
 
-roles_key = <roles_key>
+roles_key = <string>
     * Specifies which RADIUS attribute ought to be used for determining the user roles
     * Review the radius app logs (index=_internal sourcetype=radius_auth) if you have set the roles on the RADIUS server but are not sure what the roles_key is.
     * Examples: "(0, 1)", "(25,"

@@ -594,13 +594,15 @@ class RadiusAuth():
     DEFAULT_RADIUS_VENDOR_CODE = 0 # Splunk has an enterprise ID of 27389 but 0 is retained for legacy installs
     DEFAULT_RADIUS_ROLE_ATTRIBUTE_ID = 1
     
-    RADIUS_IDENTIFIER = "identifier"
-    RADIUS_SECRET     = "secret"
-    RADIUS_SERVER     = "server"
-    DEFAULT_ROLES     = "default_roles"
-    ROLES_KEY         = "roles_key"
-    VENDOR_CODE       = 'vendor_code'
-    ROLE_ATTRIBUTE    = 'roles_attribute_id'
+    RADIUS_IDENTIFIER    = "identifier"
+    RADIUS_SECRET        = "secret"
+    RADIUS_SERVER        = "server"
+    DEFAULT_ROLES        = "default_roles"
+    ROLES_KEY            = "roles_key"
+    VENDOR_CODE          = 'vendor_code'
+    ROLE_ATTRIBUTE       = 'roles_attribute_id'
+    RADIUS_BACKUP_SERVER = 'backup_server'
+    RADIUS_BACKUP_SECRET = 'backup_server_secret'
     
     # This regular expression splits up a list of roles
     ROLES_SPLIT  = re.compile("[:,]*")
@@ -608,7 +610,7 @@ class RadiusAuth():
     # Regular expression for parsing the roles_key
     ROLES_KEY_PARSE_REGEX = re.compile("(?P<role_vendor_code>[0-9]+)([^,]*?,[^,]*?(?P<role_attribute_id>[0-9]+))?")
     
-    def __init__(self, server = None, secret = None, identifier = None, roles_key="(0, 1)", default_roles=None, vendor_code=None, roles_attribute_id=None):
+    def __init__(self, server = None, secret = None, identifier = None, roles_key="(0, 1)", default_roles=None, vendor_code=None, roles_attribute_id=None, backup_server=None, backup_server_secret=None):
         """
         Sets up a class that can be used for authenticating against a RADIUS server.
         
@@ -620,11 +622,16 @@ class RadiusAuth():
         default_roles -- The list of default roles that ought to be used if no roles could be found for the user (needs to be an array of strings)
         vendor_code -- The vendor code that ought to be used for identifying the roles attribute from the server
         roles_attribute_id -- The attribute ID that ought to be used for identifying the roles attribute from the server
+        backup_server -- The backup server to use if the primary cannot be contacted
+        backup_server_secret -- The secret to be used on the backup server
         """
         
-        self.server     = server
-        self.secret     = secret
-        self.identifier = identifier
+        self.server               = server
+        self.secret               = secret
+        self.identifier           = identifier
+        
+        self.backup_server        = backup_server
+        self.backup_server_secret = backup_server_secret
         
         if default_roles is not None:
             self.default_roles = default_roles[:]
@@ -770,15 +777,17 @@ class RadiusAuth():
         combined = combined_conf.get("default")
         
         # Initialize the class
-        self.identifier         = combined.get(RadiusAuth.RADIUS_IDENTIFIER, "Splunk")
-        self.server             = combined.get(RadiusAuth.RADIUS_SERVER, None)
-        self.secret             = combined.get(RadiusAuth.RADIUS_SECRET, None)
-        self.roles_key          = combined.get(RadiusAuth.ROLES_KEY, None)
-        self.default_roles      = self.splitRoles( combined.get(RadiusAuth.DEFAULT_ROLES, None) )
+        self.identifier            = combined.get(RadiusAuth.RADIUS_IDENTIFIER, "Splunk")
+        self.server                = combined.get(RadiusAuth.RADIUS_SERVER, None)
+        self.secret                = combined.get(RadiusAuth.RADIUS_SECRET, None)
+        self.backup_server         = combined.get(RadiusAuth.RADIUS_BACKUP_SERVER, None)
+        self.backup_server_secret  = combined.get(RadiusAuth.RADIUS_BACKUP_SECRET, None)
+        self.roles_key             = combined.get(RadiusAuth.ROLES_KEY, None)
+        self.default_roles         = self.splitRoles( combined.get(RadiusAuth.DEFAULT_ROLES, None) )
         
         # Get the roles attribute ID and vendor as integers
-        roles_attribute_id_tmp  = combined.get(RadiusAuth.ROLE_ATTRIBUTE, RadiusAuth.DEFAULT_RADIUS_ROLE_ATTRIBUTE_ID)
-        vendor_code_tmp         = combined.get(RadiusAuth.VENDOR_CODE, RadiusAuth.DEFAULT_RADIUS_VENDOR_CODE)
+        roles_attribute_id_tmp     = combined.get(RadiusAuth.ROLE_ATTRIBUTE, RadiusAuth.DEFAULT_RADIUS_ROLE_ATTRIBUTE_ID)
+        vendor_code_tmp            = combined.get(RadiusAuth.VENDOR_CODE, RadiusAuth.DEFAULT_RADIUS_VENDOR_CODE)
         
         try:
             roles_attribute_id = int(roles_attribute_id_tmp)
@@ -950,6 +959,35 @@ class RadiusAuth():
         # Send out the message
         logger.debug( "Received the following fields upon login: %s" % ( ", ".join(attrs) ) )
     
+    def perform_auth_request(self, server, secret, username, password):
+        """
+        Send an authentication request to the given server.
+        
+        Arguments:
+        server -- The RADIUS server to connect to (examples: radius.acme.net, radius.acme.net:10812)
+        secret -- The secret used to authenticate to the RADIUS server
+        username -- The username to authenticate
+        password -- The password to check when authenticating
+        """
+        
+        # Create a new connection to the server
+        srv = Client(server=server, secret=secret, dict=Dictionary( RadiusAuth.getDictionaryFile() ))
+        
+        # Create the authentication packet
+        req=srv.CreateAuthPacket(code=pyrad.packet.AccessRequest, User_Name=username, NAS_Identifier=self.identifier)
+        req["User-Password"]=req.PwCrypt(password)
+        
+        try:
+            # Send the request
+            reply=srv.SendPacket(req)
+                
+            return reply
+        except Exception as e:
+            logger.error("Exception triggered when attempting to contact the RADIUS server %s: %s" % (server, str(e)))
+            # I hate swallowing exceptions, but socket tends to throw lots of exceptions for networking
+            # problems that can be ignored. We need to be able to recover
+            return None
+    
     def authenticate(self, username, password, update_user_info=True, directory=None, log_reply_items=True ):
         """
         Perform an authentication attempt to the RADIUS server. Return true if the authentication succeeded.
@@ -967,22 +1005,35 @@ class RadiusAuth():
         self.checkValues()
         self.checkUsernameAndPassword(username, password)
         
-        # Create a new connection to the server
-        srv = Client(server=self.server, secret=self.secret, dict=Dictionary( RadiusAuth.getDictionaryFile() ))
-        
-        # Create the authentication packet
-        req=srv.CreateAuthPacket(code=pyrad.packet.AccessRequest, User_Name=username, NAS_Identifier=self.identifier)
-        req["User-Password"]=req.PwCrypt(password)
-        
-        # Send the request
-        reply=srv.SendPacket(req)
+        # Send the authentication request
+        reply = self.perform_auth_request(self.server, self.secret, username, password)
         
         # Check the reply
-        if reply.code==pyrad.packet.AccessAccept:
+        if reply is not None and reply.code==pyrad.packet.AccessAccept:
             auth_suceeded = True
+            logger.info("Authentication to primary RADIUS server succeeded")
         else:
             auth_suceeded = False
+            logger.info("Authentication to primary RADIUS server failed")
             
+        # If authentication failed, then try the backup server if it is available
+        if auth_suceeded == False and self.backup_server is not None:
+            
+            secret = self.backup_server_secret
+            
+            if not secret:
+                secret = self.secret
+            
+            reply = self.perform_auth_request(self.backup_server, secret, username, password)
+            
+            # Check the reply
+            if reply is not None and reply.code==pyrad.packet.AccessAccept:
+                auth_suceeded = True
+                logger.info("Authentication to secondary RADIUS server succeeded")
+            else:
+                auth_suceeded = False
+                logger.info("Authentication to secondary RADIUS server failed")
+        
         # Update the lookup if necessary
         if auth_suceeded:
             
