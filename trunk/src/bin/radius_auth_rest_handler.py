@@ -260,12 +260,15 @@ class RadiusAuthRestHandler(admin.MConfigHandler):
     PARAM_VENDOR_CODE      = 'vendor_code'
     PARAM_ROLE_ATTRIBUTE   = 'roles_attribute_id'
     PARAM_DEFAULT_ROLES    = 'default_roles'
+    PARAM_BACKUP_SERVER    = 'backup_server'
+    PARAM_BACKUP_SECRET    = 'backup_server_secret'
     
     # Below are the list of valid and required parameters
     VALID_PARAMS           = [ PARAM_SECRET, PARAM_SERVER, PARAM_TEST_USERNAME,
                                PARAM_TEST_PASSWORD, PARAM_IDENTIFIER, PARAM_ENABLED,
                                PARAM_DISABLED, PARAM_ROLES_KEY, PARAM_DEFAULT_ROLES,
-                               PARAM_VENDOR_CODE, PARAM_ROLE_ATTRIBUTE ]
+                               PARAM_VENDOR_CODE, PARAM_ROLE_ATTRIBUTE,
+                               PARAM_BACKUP_SERVER, PARAM_BACKUP_SECRET ]
     
     REQUIRED_PARAMS        = [ PARAM_SECRET, PARAM_SERVER ]
     
@@ -279,7 +282,7 @@ class RadiusAuthRestHandler(admin.MConfigHandler):
         PARAM_DISABLED         : BooleanFieldValidator(),
         PARAM_DEBUG            : BooleanFieldValidator(),
         PARAM_DEFAULT_ROLES    : ListValidator(),
-        PARAM_VENDOR_CODE : IntegerFieldValidator(),
+        PARAM_VENDOR_CODE      : IntegerFieldValidator(),
         PARAM_ROLE_ATTRIBUTE   : IntegerFieldValidator()
         }
     
