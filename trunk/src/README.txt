@@ -60,11 +60,17 @@ Change History
 | Version |  Changes                                                                                                      |
 +---------+---------------------------------------------------------------------------------------------------------------+
 | 1.0     | Initial version                                                                                               |
+|---------|---------------------------------------------------------------------------------------------------------------|
 | 1.0.1   | fixed issue where setup app did not configure the authentication script correctly                             |                                                                                                                                                                            |
+|---------|---------------------------------------------------------------------------------------------------------------|
 | 1.1     | added debug logging of the list of fields provided by the RADIUS server                                       |
 |         | added ability to specify the RADIUS attribute for finding the roles list                                      |
 |         | added ability to define default roles                                                                         |
 |         | setup now sets the cache timing in order to prevent cases where it may not be set correctly                   |
+|---------|---------------------------------------------------------------------------------------------------------------|
 | 1.1.1   | the setup screen now allows users to test an account without entering the secret if it is already defined     |
+|         | other minor bug fixes                                                                                         |
+|---------|---------------------------------------------------------------------------------------------------------------|
+| 1.2     | now supports a backup RADIUS server that will be used if the primary fails                                    |
 |         | other minor bug fixes                                                                                         |
 +---------+---------------------------------------------------------------------------------------------------------------+
