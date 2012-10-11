@@ -445,22 +445,7 @@ class RadiusAuthRestHandler(admin.MConfigHandler):
         """
         
         if name in d:
-            d[name] = None
-    
-    def returnClearValueIfEmpty(self, v):
-        
-        if v == "" or v is None:
-            return " "
-        else:
-            return v
-    
-    def clearEmptyParams(self, d, clear_value=None):
-        
-        for k, v in d.items():
-            
-            if v == "" or v is None:
-                d[k] = clear_value
-            
+            d[name] = None         
     
     @log_function_invocation
     def configureAuthenticationScript(self, enabled=True, getUserInfoTTL= "10s", getUsersTTL = "1min", userLoginTTL = "30s", set_timing_only_if_necessary=True):
