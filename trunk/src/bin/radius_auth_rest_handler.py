@@ -447,6 +447,21 @@ class RadiusAuthRestHandler(admin.MConfigHandler):
         if name in d:
             d[name] = None
     
+    def returnClearValueIfEmpty(self, v):
+        
+        if v == "" or v is None:
+            return " "
+        else:
+            return v
+    
+    def clearEmptyParams(self, d, clear_value=None):
+        
+        for k, v in d.items():
+            
+            if v == "" or v is None:
+                d[k] = clear_value
+            
+    
     @log_function_invocation
     def configureAuthenticationScript(self, enabled=True, getUserInfoTTL= "10s", getUsersTTL = "1min", userLoginTTL = "30s", set_timing_only_if_necessary=True):
         """
@@ -560,6 +575,13 @@ class RadiusAuthRestHandler(admin.MConfigHandler):
             
             # Get the validated parameters
             validated_params = RadiusAuthRestHandler.convertParams( name, cleaned_params, True )
+            
+            # Clear out the backup RADIUS server if blank so that it can be removed if the user wishes (note that values of none are ignored by Splunk)
+            clearable_params = [ RadiusAuthRestHandler.PARAM_BACKUP_SERVER ]
+            
+            for p in clearable_params:
+                if p in validated_params and validated_params[p] is None:
+                    validated_params[p] = ""
             
             # Write out the updated conf
             self.writeConf(RadiusAuthRestHandler.CONF_FILE, name, validated_params )

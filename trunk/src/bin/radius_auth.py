@@ -1017,7 +1017,7 @@ class RadiusAuth():
             logger.info("Authentication to primary RADIUS server failed")
             
         # If authentication failed, then try the backup server if it is available
-        if auth_suceeded == False and self.backup_server is not None:
+        if auth_suceeded == False and self.backup_server is not None and len(self.backup_server.strip()) > 0:
             
             secret = self.backup_server_secret
             
