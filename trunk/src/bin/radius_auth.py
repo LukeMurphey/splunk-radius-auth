@@ -1019,11 +1019,14 @@ class RadiusAuth():
         # If authentication failed, then try the backup server if it is available
         if auth_suceeded == False and self.backup_server is not None and len(self.backup_server.strip()) > 0:
             
+            # Get the secret for the backup server
             secret = self.backup_server_secret
             
+            # Use the secret from the primary server if none was provided for the backup server
             if not secret:
                 secret = self.secret
             
+            # Send the authentication request
             reply = self.perform_auth_request(self.backup_server, secret, username, password)
             
             # Check the reply
