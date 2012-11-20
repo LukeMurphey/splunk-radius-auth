@@ -288,7 +288,7 @@ class TestRadiusAuth(RadiusAuthAppTest):
         
         self.assertEquals( len(role_map), 2)
         self.assertEquals( len(role_map['jdoe']), 3)
-        self.assertEquals( role_map['jdoe'], ['admin', 'power', 'user'])
+        self.assertEquals( role_map['jdoe'], ['admin', 'power', 'user']) 
         
     def test_load_roles_lookup_caps_insensitive(self):
         
@@ -299,7 +299,7 @@ class TestRadiusAuth(RadiusAuthAppTest):
         self.assertEquals( len(role_map), 2)
         self.assertEquals( len(role_map['jdoe']), 3)
         self.assertEquals( role_map['jdoe'], ['admin', 'power', 'user'])
-         
+        
     def test_load_roles_invalid_lookup(self):
         
         bad_file = None
@@ -393,6 +393,41 @@ class TestRadiusAuth(RadiusAuthAppTest):
         roles = ["admin", "power", "can_delete"]
         
         roles_map_file_path = self.write_auth_csv( self.username, roles )
+        
+        try:
+            ra = RadiusAuth(self.server, self.secret, self.identifier, vendor_code=self.vendor_code, roles_attribute_id=self.roles_attribute_id)
+            
+            result = ra.authenticate(self.username, self.password, update_user_info=True, directory=self.tmp_dir, roles_map_file_path=roles_map_file_path)
+            
+            self.assertTrue(result)
+            users = UserInfo.getAllUsers( self.tmp_dir )
+            
+            self.assertEquals( len(users), 1)
+            
+            # Get the user
+            user = users[0]
+            self.assertTrue( user.username, self.username)
+            
+            # Make sure the roles exist:
+            if 'can_delete' not in user.roles:
+                self.fail("can_delete not in the roles (%s)" % (user.roles) )
+                
+            if 'admin' not in user.roles:
+                self.fail("admin not in the roles (%s)" % (user.roles) )
+                
+            if 'power' not in user.roles:
+                self.fail("power not in the roles (%s)" % (user.roles) )
+                
+                self.assertEquals( len(user.roles), 3 )
+                
+        finally:
+            os.remove( roles_map_file_path )
+        
+    def test_auth_auth_info_roles_override_caps_insensitive(self):
+        
+        roles = ["admin", "power", "can_delete"]
+        
+        roles_map_file_path = self.write_auth_csv( self.username.upper(), roles )
         
         try:
             ra = RadiusAuth(self.server, self.secret, self.identifier, vendor_code=self.vendor_code, roles_attribute_id=self.roles_attribute_id)
