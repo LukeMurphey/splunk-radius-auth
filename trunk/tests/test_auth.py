@@ -289,6 +289,16 @@ class TestRadiusAuth(RadiusAuthAppTest):
         self.assertEquals( len(role_map), 2)
         self.assertEquals( len(role_map['jdoe']), 3)
         self.assertEquals( role_map['jdoe'], ['admin', 'power', 'user'])
+        
+    def test_load_roles_lookup_caps_insensitive(self):
+        
+        ra = RadiusAuth()
+        
+        role_map = ra.loadRolesMap( file_path=os.path.join("test_role_map", "roles_map_caps.csv"))
+        
+        self.assertEquals( len(role_map), 2)
+        self.assertEquals( len(role_map['jdoe']), 3)
+        self.assertEquals( role_map['jdoe'], ['admin', 'power', 'user'])
          
     def test_load_roles_invalid_lookup(self):
         

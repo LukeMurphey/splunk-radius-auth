@@ -991,7 +991,7 @@ class RadiusAuth():
                     # Load the role information
                     else:
                         # Get the username and the raw roles
-                        row_username = row[RadiusAuth.ROLES_MAP_USERNAME].strip()
+                        row_username = row[RadiusAuth.ROLES_MAP_USERNAME].strip().lower()
                         row_roles_str = row[RadiusAuth.ROLES_MAP_ROLES]
                             
                         # Split up the roles and put the information in the list
