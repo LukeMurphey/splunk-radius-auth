@@ -112,7 +112,7 @@
           
           <label>The settings below are only required if you intend to assign roles to users (other that the user role which is assigned by default).
           You will need to specify the vendor code and attribute ID such that it matches the settings on your RADIUS server.
-          See <a target="_blank" href="http://lukemurphey.net/projects/splunk-radius-auth/wiki/Configuring_Roles">LukeMurphey.net for more info</a>.</label>
+          See <a target="_blank" href="http://lukemurphey.net/projects/splunk-radius-auth/wiki/Configuring_Roles">LukeMurphey.net for more info</a> and for other methods of defining roles.</label>
           ]]>
       </text>
       

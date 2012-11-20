@@ -952,7 +952,7 @@ class RadiusAuth():
             # Get path of the application directory
             app_dir = self.getAppDirectory()
             
-            # IF we couldn't get a reference to the application directory, then stop
+            # If we couldn't get a reference to the application directory, then stop
             if app_dir is None:
                 return None
             
@@ -985,7 +985,7 @@ class RadiusAuth():
                         logger.warn('Row %i of the "%s" file has no roles', row_number, file_path)
                         
                     # Skip the row if it isn't for the given user
-                    elif username is not None and len(row) > 0 and row[RadiusAuth.ROLES_MAP_USERNAME].strip() != username:
+                    elif username is not None and len(row) > 0 and row[RadiusAuth.ROLES_MAP_USERNAME].strip().lower() != username:
                         pass
                     
                     # Load the role information
@@ -1205,6 +1205,8 @@ class RadiusAuth():
                 if roles is None:
                     # Get the roles from the reply
                     roles = self.getRolesFromReply(reply)
+                else:
+                    logger.info("Roles for user '%s' loaded from the roles lookup file: user=%s, roles=%s", username, username, str(roles) )
                     
                 # Make a new user info object
                 user = UserInfo( username, None, roles)
