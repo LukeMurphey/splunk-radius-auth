@@ -73,4 +73,7 @@ Change History
 |---------|---------------------------------------------------------------------------------------------------------------|
 | 1.2     | now supports a backup RADIUS server that will be used if the primary fails                                    |
 |         | other minor bug fixes                                                                                         |
+|---------|---------------------------------------------------------------------------------------------------------------|
+| 1.3     | now supports overriding of roles based on a lookup file (radius_roles_map.csv)                                |
+|         | improved handling of cases where cached user files cannot be read                                             |
 +---------+---------------------------------------------------------------------------------------------------------------+

@@ -1,14 +1,16 @@
 import unittest
 
 import sys
+import csv
 import re
 import tempfile
 import shutil
 from StringIO import StringIO
+import os
 
 sys.path.append("../src/bin")
 
-from radius_auth import *
+from radius_auth import UserInfo, RadiusAuth, userLogin, getUserInfo, getUsers, ConfFile, CONF_FILE, USERNAME, PASSWORD, SUCCESS
 
 class RadiusAuthAppTest(unittest.TestCase):
     
@@ -165,6 +167,36 @@ class TestRadiusAuth(RadiusAuthAppTest):
         if 'admin' not in user.roles:
             self.fail("admin not in the roles (%s)" % (user.roles) )
             
+    def test_auth_auth_info_junk_in_dir(self):
+        
+        with open( os.path.join( self.tmp_dir, "some_junk.csv" ), "w" ) as junk_file:
+            
+            # Write out some junk in the directory and see if it handled well (we will write a CSV since it isn't valid JSON)
+            junk_file.write("This is just some stuff that isn't valid JSON")
+            
+            # Now, proceed with the authentication attempt and make sure the correct result occurs
+            ra = RadiusAuth(self.server, self.secret, self.identifier, vendor_code=self.vendor_code, roles_attribute_id=self.roles_attribute_id)
+            
+            result = ra.authenticate(self.username, self.password, update_user_info=True, directory=self.tmp_dir)
+            
+            self.assertTrue(result)
+            users = UserInfo.getAllUsers( self.tmp_dir )
+            
+            self.assertEquals( len(users), 1)
+            
+            # Get the user
+            user = users[0]
+            self.assertTrue( user.username, self.username)
+            
+            # Make sure the roles exist:
+            if 'can_delete' not in user.roles:
+                self.fail("can_delete not in the roles (%s)" % (user.roles) )
+                
+            if 'admin' not in user.roles:
+                self.fail("admin not in the roles (%s)" % (user.roles) )
+        #finally:
+        #    junk_file
+            
     def test_auth_auth_info_parse_roles_key(self):
         
         ra = RadiusAuth(self.server, self.secret, self.identifier, roles_key="(28, 15)")
@@ -240,6 +272,146 @@ class TestRadiusAuth(RadiusAuthAppTest):
         result = ra.authenticate(self.username, self.password, update_user_info=False)
         
         self.assertTrue(result)
+        
+    def test_load_roles_lookup_no_file(self):
+        ra = RadiusAuth()
+        
+        role_map = ra.loadRolesMap( file_path=os.path.join("non_existent_path", "roles_map.csv"))
+        
+        self.assertEquals( role_map, None )
+        
+    def test_load_roles_lookup(self):
+        
+        ra = RadiusAuth()
+        
+        role_map = ra.loadRolesMap( file_path=os.path.join("test_role_map", "roles_map.csv"))
+        
+        self.assertEquals( len(role_map), 2)
+        self.assertEquals( len(role_map['jdoe']), 3)
+        self.assertEquals( role_map['jdoe'], ['admin', 'power', 'user'])
+         
+    def test_load_roles_invalid_lookup(self):
+        
+        bad_file = None
+        
+        try:
+            # Create the junk file
+            bad_file = tempfile.NamedTemporaryFile(delete=False, suffix="_roles_map.csv")
+            
+            # Write out some junk in the directory and see if it handled well (we will write a CSV since it isn't valid JSON)
+            bad_file.write("This is just some stuff that isn't a valid CSV file")
+            bad_file.close()
+            
+            # Try to load the file
+            ra = RadiusAuth()
+                
+            role_map = ra.loadRolesMap( file_path=bad_file.name)
+            
+            self.assertEquals( role_map, {})
+        finally:
+            
+            if bad_file is not None:
+                os.remove( bad_file.name ) 
+        
+    def test_load_roles_lookup_filtered(self):
+        ra = RadiusAuth()
+        
+        role_map = ra.loadRolesMap( file_path=os.path.join("test_role_map", "roles_map.csv"), username="jdoe")
+        
+        self.assertEquals( len(role_map), 1)
+        self.assertEquals( len(role_map['jdoe']), 3)
+        self.assertEquals( role_map['jdoe'], ['admin', 'power', 'user'])
+    
+    def test_load_roles_lookup_incomplete_row(self):
+        
+        ra = RadiusAuth()
+        
+        role_map = ra.loadRolesMap( file_path=os.path.join("test_role_map", "roles_map_incomplete_row.csv"))
+        
+        self.assertEquals( len(role_map), 1)
+        self.assertTrue( 'bobama' in role_map )
+    
+    def test_get_roles_lookup(self):
+        
+        ra = RadiusAuth()
+        
+        self.assertEquals( ra.user_roles_map, None)
+        self.assertEquals( ra.getRolesFromLookup( username="jdoe", file_path=os.path.join("test_role_map", "roles_map.csv") ), ['admin', 'power', 'user'])
+        
+        # Make sure the roles map did not get cached since we did a user name specific lookup
+        self.assertEquals( ra.user_roles_map, None)
+        
+    def test_get_roles_lookup_use_cached(self):
+        
+        file_path = os.path.join("test_role_map", "roles_map.csv")
+        
+        ra = RadiusAuth()
+        ra.user_roles_map = { "acme" : ['power', 'test'] }
+        
+        # This should work since the user is in the list
+        self.assertEquals( ra.getRolesFromLookup( username="acme", file_path=file_path ), ['power', 'test'])
+        
+        # This should return none since jdoe isn't in the cached list
+        self.assertEquals( ra.getRolesFromLookup( username="jdoe", file_path=file_path ), None)
+        
+        # Forcing a reload should allow jdoe to be looked up since he is in the list on disk
+        self.assertEquals( ra.getRolesFromLookup( username="jdoe", file_path=file_path, force_reload=True ), ['admin', 'power', 'user'])
+        
+    def test_get_roles_lookup_non_existent(self):
+        
+        ra = RadiusAuth()
+        
+        self.assertEquals( ra.user_roles_map, None)
+        self.assertEquals( ra.getRolesFromLookup( username="jdoe", file_path=os.path.join("non_existent_path", "roles_map.csv") ), None )
+        self.assertEquals( ra.user_roles_map, None)
+        
+    def write_auth_csv(self, username, roles):
+        
+        csv_file = tempfile.NamedTemporaryFile(delete=False, suffix="_roles_map.csv")
+        
+        with csv_file:
+            
+            csv_writer = csv.writer( csv_file )
+            
+            csv_writer.writerow( ["username", "roles"] )
+            csv_writer.writerow( [username, ":".join(roles)] )
+        
+        return csv_file.name
+        
+    def test_auth_auth_info_roles_override(self):
+        
+        roles = ["admin", "power", "can_delete"]
+        
+        roles_map_file_path = self.write_auth_csv( self.username, roles )
+        
+        try:
+            ra = RadiusAuth(self.server, self.secret, self.identifier, vendor_code=self.vendor_code, roles_attribute_id=self.roles_attribute_id)
+            
+            result = ra.authenticate(self.username, self.password, update_user_info=True, directory=self.tmp_dir, roles_map_file_path=roles_map_file_path)
+            
+            self.assertTrue(result)
+            users = UserInfo.getAllUsers( self.tmp_dir )
+            
+            self.assertEquals( len(users), 1)
+            
+            # Get the user
+            user = users[0]
+            self.assertTrue( user.username, self.username)
+            
+            # Make sure the roles exist:
+            if 'can_delete' not in user.roles:
+                self.fail("can_delete not in the roles (%s)" % (user.roles) )
+                
+            if 'admin' not in user.roles:
+                self.fail("admin not in the roles (%s)" % (user.roles) )
+                
+            if 'power' not in user.roles:
+                self.fail("power not in the roles (%s)" % (user.roles) )
+                
+                self.assertEquals( len(user.roles), 3 )
+                
+        finally:
+            os.remove( roles_map_file_path )
         
     def test_load_conf(self):
         
