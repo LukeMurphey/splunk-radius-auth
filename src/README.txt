@@ -18,7 +18,7 @@ You'll need the following information from your RADIUS server in order to setup 
   2) RADIUS server port (only necessary to specify in the app if not the default port, UDP/1812)
   3) RADIUS server secret (the password)
   
-The RADIUS authentication app will derive the user's roles from the RADIUS server from the RADIUS vendor specific field (vendor ID of 0 and a sub-type Number of 0). This value ought to be a colon separated list of the users' roles. If this is not specified, the user's role will be assumed to be a user.
+The RADIUS authentication app will derive the user's roles from the RADIUS server from the RADIUS vendor specific field (vendor ID of 0 and a sub-type Number of 0). This value ought to be a colon separated list of the users' roles. If this is not specified, the user's role will be assumed to be a user. Alternatively, you can use a lookup file to map roles to users. See http://lukemurphey.net/projects/splunk-radius-auth/wiki/Configuring_Roles for more information.
 
 
 
@@ -75,5 +75,5 @@ Change History
 |         | other minor bug fixes                                                                                         |
 |---------|---------------------------------------------------------------------------------------------------------------|
 | 1.3     | now supports overriding of roles based on a lookup file (radius_roles_map.csv)                                |
-|         | improved handling of cases where cached user files cannot be read                                             |
+|         | improved handling of unreadable user info files cannot                                                        |
 +---------+---------------------------------------------------------------------------------------------------------------+
