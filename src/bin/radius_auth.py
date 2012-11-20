@@ -3,6 +3,7 @@ from pyrad.client import Client
 from pyrad.dictionary import Dictionary
 
 import sys
+import csv
 import getopt
 import os
 import hashlib
@@ -377,7 +378,12 @@ class UserInfo():
             files = os.listdir( directory )
             
             for f in files:
-                users.append( UserInfo.loadFile( os.path.join( directory, f) ) )
+                
+                # Try to load the file. Log an error if the file can not be loaded.
+                try:
+                    users.append( UserInfo.loadFile( os.path.join( directory, f) ) )
+                except ValueError:
+                    logger.exception( 'Unable to load user file "%s"' % (f) )
                 
         except OSError:
             # Path does not exist, likely because the directory has not yet been created
@@ -527,18 +533,27 @@ class UserInfo():
         """
         
         # Load the file from the JSON
-        fp = open(path)
-        user_dict = json.load(fp)
+        fp = None
         
-        # Create the class instance
-        username = user_dict["username"]
-        realname = user_dict.get("realname", None)
-        roles = user_dict.get("roles", None)
+        try:
+            fp = open(path)
+            
+            user_dict = json.load(fp)
+            
+            # Create the class instance
+            username = user_dict["username"]
+            realname = user_dict.get("realname", None)
+            roles = user_dict.get("roles", None)
+            
+            user_info = UserInfo( username, realname, roles )
+            
+            # Return the instance
+            return user_info
         
-        user_info = UserInfo( username, realname, roles )
-        
-        # Return the instance
-        return user_info
+        finally:
+            
+            if fp is not None:
+                fp.close()
     
     @staticmethod
     def load( username, directory = None ):
@@ -610,7 +625,14 @@ class RadiusAuth():
     # Regular expression for parsing the roles_key
     ROLES_KEY_PARSE_REGEX = re.compile("(?P<role_vendor_code>[0-9]+)([^,]*?,[^,]*?(?P<role_attribute_id>[0-9]+))?")
     
-    def __init__(self, server = None, secret = None, identifier = None, roles_key="(0, 1)", default_roles=None, vendor_code=None, roles_attribute_id=None, backup_server=None, backup_server_secret=None):
+    # The name of the files that contains the roles map
+    ROLES_MAP_LOOKUP_FILENAME = "radius_roles_map.csv"
+    
+    # The following denote the data in each column of the roles map
+    ROLES_MAP_USERNAME = 0
+    ROLES_MAP_ROLES = 1
+    
+    def __init__(self, server = None, secret = None, identifier = None, roles_key="(0, 1)", default_roles=None, vendor_code=None, roles_attribute_id=None, backup_server=None, backup_server_secret=None, user_roles_map=None):
         """
         Sets up a class that can be used for authenticating against a RADIUS server.
         
@@ -624,6 +646,7 @@ class RadiusAuth():
         roles_attribute_id -- The attribute ID that ought to be used for identifying the roles attribute from the server
         backup_server -- The backup server to use if the primary cannot be contacted
         backup_server_secret -- The secret to be used on the backup server
+        user_roles_map -- A dictionary mapping users to roles
         """
         
         self.server               = server
@@ -642,6 +665,9 @@ class RadiusAuth():
         # Set up the key that we will use to obtain the roles information
         self.roles_key = roles_key
         self.configure_roles_attribute(roles_key, vendor_code, roles_attribute_id)
+        
+        # Initialize the variable where the user roles lookup will be stored
+        self.user_roles_map = user_roles_map
         
     def configure_roles_attribute(self, roles_key, vendor_code, roles_attribute_id):
         """
@@ -746,6 +772,15 @@ class RadiusAuth():
         if self.identifier is None:
             raise ValueError("The identifier cannot be none")
     
+    def getAppDirectory(self):
+        """
+        Returns a path to the application directory for this app. Returns none if the SPLUNK_HOME
+        environment variable is not defined.
+        """
+        
+        if "SPLUNK_HOME" in os.environ:
+            return os.path.join( os.environ["SPLUNK_HOME"], "etc", "apps", APP_NAME )
+    
     def loadConf( self, directory = None ):
         """
         Load the settings from the conf files.
@@ -756,7 +791,7 @@ class RadiusAuth():
         
         # Use the directory that the app resides in if one was not provided
         if directory is None:
-            directory = os.path.join( os.environ["SPLUNK_HOME"], "etc", "apps", APP_NAME )
+            directory = self.getAppDirectory()
         
         # Load the default conf
         default_conf = ConfFile()
@@ -863,6 +898,123 @@ class RadiusAuth():
     
         if roles_str is not None and roles_str.strip() != "":
             return self.ROLES_SPLIT.split(roles_str)
+        
+    def getRolesFromLookup(self, username=None, force_reload=False, file_path=None):
+        """
+        Gets the roles assigned to users from the user roles lookup file.
+        
+        Arguments:
+        username -- The user name to get the user roles for. If none, all of them will be returned in a dictionary.
+        force_reload -- Reload the lookup file from disk even if the roles map are already cached.
+        file_path -- The file path of the lookup file.
+        """
+        
+        # Load the user roles from disk
+        if force_reload or self.user_roles_map is None:
+            
+            # If a user name was provided then just get the information for that user
+            if username is not None:
+                user_roles_map = self.loadRolesMap(username=username, file_path=file_path)
+                
+            # Otherwise, get all of them and cache the results
+            else:
+                user_roles_map = self.loadRolesMap(file_path=file_path)
+                self.user_roles_map = user_roles_map
+        
+        # Use the cached list to do the lookup
+        else:
+            user_roles_map = self.user_roles_map
+            
+        # Try to do the lookup
+        if user_roles_map is not None and username is not None:
+            return user_roles_map.get(username, None)
+        elif user_roles_map is not None:
+            return user_roles_map
+        else:
+            return None
+        
+    def loadRolesMap(self, file_path=None, username=None ):
+        """
+        Loads the list of roles from the provided path and returns a dictionary of users (as the key) with a list of the roles
+        as the value.
+        
+        Returns none if the lookup file cannot be opened (such as when it does not exist). Logs an error message if the file
+        exists but cannot be opened. 
+        
+        Arguments:
+        file_path -- The path to the lookup file. Will be automatically assigned if none.
+        username -- The username of the information to get the information for (otherwise, all will be returned).
+        """
+        
+        # Get the file path if it was not provided
+        if file_path is None:
+            
+            # Get path of the application directory
+            app_dir = self.getAppDirectory()
+            
+            # IF we couldn't get a reference to the application directory, then stop
+            if app_dir is None:
+                return None
+            
+            # Get the file path
+            file_path = os.path.join( app_dir, "lookups", RadiusAuth.ROLES_MAP_LOOKUP_FILENAME )
+            
+        # This user map will map the username (the key) to the users' roles
+        user_role_map = {}
+            
+        # Open the file and get the output
+        try:
+            with open(file_path, "rb") as csv_file_h:
+                csv_reader = csv.reader(csv_file_h)
+                
+                row_number = 0
+                
+                # Add each user entry to the role map
+                for row in csv_reader:
+                    
+                    # Skip the header row
+                    if row_number == 0: 
+                        pass 
+                    
+                    # Detect rows with no user name
+                    elif len(row) == 0 or len( row[RadiusAuth.ROLES_MAP_USERNAME].strip() ) == 0:
+                        logger.warn('Row %i of the "%s" file has no username', row_number, file_path)
+                    
+                    # Detect rows with no roles
+                    elif len(row) == 1 or len( row[RadiusAuth.ROLES_MAP_ROLES].strip() ) == 0:
+                        logger.warn('Row %i of the "%s" file has no roles', row_number, file_path)
+                        
+                    # Skip the row if it isn't for the given user
+                    elif username is not None and len(row) > 0 and row[RadiusAuth.ROLES_MAP_USERNAME].strip() != username:
+                        pass
+                    
+                    # Load the role information
+                    else:
+                        # Get the username and the raw roles
+                        row_username = row[RadiusAuth.ROLES_MAP_USERNAME].strip()
+                        row_roles_str = row[RadiusAuth.ROLES_MAP_ROLES]
+                            
+                        # Split up the roles and put the information in the list
+                        user_role_map[row_username] = self.splitRoles(row_roles_str)
+                        
+                        # Stop here if we are filtering the results and have all of the user's we are looking for.
+                        if username is not None and row_username == username:
+                            return user_role_map
+                        
+                    # Increment the row count      
+                    row_number = row_number + 1
+                    
+        except IOError:
+            # File could not be opened. This most often happens because the file does not exist because roles maps are not being used.
+            return None
+        
+        except Exception:
+            # File could not be opened.
+            logger.exception('User roles map file "%s" could not be opened', file_path)
+            return None
+        
+        # Return the list of roles  
+        return user_role_map
     
     def is_sequence(self, arg):
         """
@@ -988,7 +1140,7 @@ class RadiusAuth():
             # problems that can be ignored. We need to be able to recover
             return None
     
-    def authenticate(self, username, password, update_user_info=True, directory=None, log_reply_items=True ):
+    def authenticate(self, username, password, update_user_info=True, directory=None, log_reply_items=True, roles_map_file_path=None ):
         """
         Perform an authentication attempt to the RADIUS server. Return true if the authentication succeeded.
         
@@ -999,6 +1151,7 @@ class RadiusAuth():
         password -- The password to check when authenticating
         update_user_info -- Update the load user info for the user
         directory -- The directory where the user_info objects are to be stored
+        roles_map_file_path -- The path to the roles map lookup file
         """
         
         # Make sure that the class is ready
@@ -1046,8 +1199,12 @@ class RadiusAuth():
             # Get the roles
             if update_user_info and (self.roles_key is not None or self.vendor_code is not None):
                 
-                # Get the roles from the reply
-                roles = self.getRolesFromReply(reply)
+                # Try to get the roles from the lookup
+                roles = self.getRolesFromLookup(username, file_path=roles_map_file_path)
+                
+                if roles is None:
+                    # Get the roles from the reply
+                    roles = self.getRolesFromReply(reply)
                     
                 # Make a new user info object
                 user = UserInfo( username, None, roles)
