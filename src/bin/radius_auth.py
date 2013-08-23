@@ -1210,7 +1210,7 @@ class RadiusAuth():
                     
                 # Make a new user info object
                 user = UserInfo( username, None, roles)
-                        
+                
                 # Save the user
                 user.save(directory)
             
@@ -1281,14 +1281,11 @@ def getUserInfo( args, out=sys.stdout, directory = None ):
     
     # Get the username we are looking up
     username = args[USERNAME]
-    user = UserInfo.load(username, directory)
-    """
+    
     try:
         user = UserInfo.load(username, directory)
-    except IOError, e:
-        out.write(FAILED)
-        return -1
-    """
+    except IOError:
+        user = None
     
     if user is None:
         logger.info( "function=getUserInfo called, user '%s' not found, username=%s" % (username, username) )
