@@ -106,7 +106,7 @@ class TestConfFile(RadiusAuthAppTest):
         self.assertEquals(d['identifier'], "server1")
 
 class TestRadiusAuth(RadiusAuthAppTest):
-
+    
     def test_auth_valid(self):
         
         ra = RadiusAuth(self.server, self.secret, self.identifier)
@@ -125,7 +125,7 @@ class TestRadiusAuth(RadiusAuthAppTest):
         
     def test_auth_auth_info_roles_key(self):
         
-        ra = RadiusAuth(self.server, self.secret, self.identifier, self.roles_key)
+        ra = RadiusAuth(self.server, self.secret, self.identifier, self.roles_key, vendor_code=self.vendor_code, roles_attribute_id=self.roles_attribute_id)
         
         result = ra.authenticate(self.username, self.password, update_user_info=True, directory=self.tmp_dir)
         
@@ -144,7 +144,7 @@ class TestRadiusAuth(RadiusAuthAppTest):
             
         if 'admin' not in user.roles:
             self.fail("admin not in the roles (%s)" % (user.roles) )
-            
+    
     def test_auth_auth_info(self):
         
         ra = RadiusAuth(self.server, self.secret, self.identifier, vendor_code=self.vendor_code, roles_attribute_id=self.roles_attribute_id)
@@ -686,6 +686,18 @@ class TestMainAuthMehods(RadiusAuthAppTest):
         
         # Test the output
         self.assertEquals( out.getvalue().strip(), "--status=success --userInfo=;" + self.username +  ";John Doe;admin:power"  )
+        
+    def test_get_user_info_no_directory(self):
+        
+        # Redirect output to a string so that we can test it
+        out = StringIO()
+        
+        # Build the input
+        args = {}
+        args[USERNAME] = "no_user"
+        
+        # Try to get the user info, make sure that an exception is not thrown because the file does not exist
+        getUserInfo( args, out, self.tmp_dir )
     
     def test_get_users(self):
         
@@ -706,8 +718,8 @@ class TestMainAuthMehods(RadiusAuthAppTest):
         if out.getvalue().strip() not in ["--status=success --userInfo=;alincoln;Abraham Lincoln;power --userInfo=;jdoe;John Doe;admin:power",
                                           "--status=success --userInfo=;jdoe;John Doe;admin:power --userInfo=;alincoln;Abraham Lincoln;power"]:
             self.fail("The output of getUsers() was not what was expected: " + out.getvalue().strip())
-        
-        
+
+
 if __name__ == '__main__':
     unittest.main()
         
