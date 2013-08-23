@@ -75,7 +75,7 @@ Change History
 |         | other minor bug fixes                                                                                         |
 |---------|---------------------------------------------------------------------------------------------------------------|
 | 1.3     | now supports overriding of roles based on a lookup file (radius_roles_map.csv)                                |
-|         | improved handling of unreadable user info files cannot                                                        |
+|         | improved handling of unreadable user info files                                                               |
 |---------|---------------------------------------------------------------------------------------------------------------|
 | 1.3.1   | fixed error that could happen if a request for user info was made and the user's information was not cached   |
 +---------+---------------------------------------------------------------------------------------------------------------+
