@@ -58,7 +58,9 @@ CONF_FILE   = "radius.conf"
 
 class ConfFile():
     """
-    Provides a mechanism for reading Splunk conf files.
+    Provides a mechanism for reading Splunk conf files. This is necessary because Splunk does not give the user auth scripts an session ID.
+    Therefore, we cannot access the REST APIs. However, we can access the file-system. Thus, we will read the files from the file-system
+    instead.
     """
     
     # This regular expression parse out the stanza name
@@ -263,7 +265,7 @@ class ConfFile():
     @staticmethod
     def merge( conf_defaults, conf_overriding ):
         """
-        Merge the two provided conf file objects. The second argument will take predence with its values overwriting those from the first argument.
+        Merge the two provided conf file objects. The second argument will take precedence with its values overwriting those from the first argument.
         
         Arguments:
         conf_defaults -- The first conf file object to load from
@@ -360,7 +362,7 @@ class UserInfo():
     @staticmethod
     def getAllUsers( directory = None, make_if_non_existent = False ):
         """
-        Load all save users info objects.
+        Load all saved users info objects.
         
         Arguments:
         directory -- The directory that contains the user info files; will default to a directory within the local/user_info directory of the app if unassigned
@@ -679,7 +681,6 @@ class RadiusAuth():
         vendor_code -- The vendor code that ought to be used for identifying the roles attribute from the server
         roles_attribute_id -- The attribute ID that ought to be used for identifying the roles attribute from the server
         """
-        
         
         # Load the vendor code from the roles key if not specifically provided
         if vendor_code is None and roles_key is not None:
