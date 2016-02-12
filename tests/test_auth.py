@@ -552,6 +552,22 @@ class TestRadiusAuth(RadiusAuthAppTest):
         self.assertEquals(ra.roles_attribute_id, 1)
         self.assertEquals(ra.vendor_code, 0)
         
+    def test_auth_unavailable_server_name(self):
+        
+        ra = RadiusAuth("thisdoesnotexistandshouldnotresolve.net", self.secret, self.identifier)
+        
+        result = ra.authenticate(self.username, self.password, update_user_info=False)
+        
+        self.assertFalse(result)
+        
+    def test_auth_bad_server_name(self):
+        
+        ra = RadiusAuth("thisisnotavalid/hostname.net", self.secret, self.identifier)
+        
+        result = ra.authenticate(self.username, self.password, update_user_info=False)
+        
+        self.assertFalse(result)
+        
         
 class TestUserInfo(unittest.TestCase):
     
