@@ -161,6 +161,8 @@ class AccountTestValidator():
                                                                               values['test_username'],
                                                                               values['test_password'] ):
             
+            logger.info("Test of credentials failed against the server '%s' for user '%s'" % ( values['server'], values['test_username']))
+            
             raise admin.ArgValidationException("Unable to validate credentials against the server '%s' for user '%s'" % ( values['server'], values['test_username']))
 
 class ListValidator(StandardFieldValidator):
