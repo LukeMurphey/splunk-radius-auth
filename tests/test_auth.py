@@ -20,6 +20,12 @@ class RadiusAuthAppTest(unittest.TestCase):
         else:
             return int(str_int)
     
+    def changeEncodingToAscii(self, s):
+        if s is not None:
+            return s.encode("ascii")
+        else:
+            return s
+    
     def loadConfig(self, properties_file=None):
         
         if properties_file is None:
@@ -37,16 +43,15 @@ class RadiusAuthAppTest(unittest.TestCase):
                 d = r.groupdict()
                 settings[ d["key"] ] = d["value"]
         
-        self.username = settings["value.test.radius.username"]
-        self.password = settings["value.test.radius.password"]
-        self.server = settings["value.test.radius.server"]
-        self.secret = settings["value.test.radius.secret"]
-        self.identifier = settings.get("value.test.radius.identifier", "Splunk")
-        
+        self.username = self.changeEncodingToAscii(settings["value.test.radius.username"])
+        self.password = self.changeEncodingToAscii(settings["value.test.radius.password"])
+        self.server = self.changeEncodingToAscii(settings["value.test.radius.server"])
+        self.secret = self.changeEncodingToAscii(settings["value.test.radius.secret"])
+        self.identifier = self.changeEncodingToAscii(settings.get("value.test.radius.identifier", "Splunk"))
         self.vendor_code = self.toInt(settings.get("value.test.radius.vendor_code", None))
-        self.roles_attribute_id = self.toInt(settings.get("value.test.radius.roles_attribute_id", None))
-        self.roles_key = settings.get("value.test.radius.roles_key", "(0, 1)")
-
+        self.roles_attribute_id = self.toInt(settings.get("value.test.radius.roles_attribute_id", None))            
+        self.roles_key = self.changeEncodingToAscii(settings.get("value.test.radius.roles_key", "(0, 1)"))
+        
     def setUp(self):
         self.loadConfig()
         self.tmp_dir = tempfile.mkdtemp( prefix="splunk_radius_auth_test_" )
@@ -109,12 +114,12 @@ class TestRadiusAuth(RadiusAuthAppTest):
     
     def test_auth_valid(self):
         
-        ra = RadiusAuth(self.server, self.secret, self.identifier)
+        ra = RadiusAuth(self.server, self.secret.encode("ascii"), self.identifier)
         
         result = ra.authenticate(self.username, self.password, update_user_info=False)
         
         self.assertTrue(result)
-        
+    
     def test_auth_invalid_username(self):
         
         ra = RadiusAuth(self.server, self.secret, self.identifier)
