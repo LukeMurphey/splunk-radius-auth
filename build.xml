@@ -1,12 +1,16 @@
 <project default="package" name="radius_auth">
+	
 	<import file="basebuild.xml" />
 	
-	<import_environment_var property="value.test.radius.server" variable="RADIUS_SERVER" />
-	<import_environment_var property="value.test.radius.secret" variable="RADIUS_SECRET" />	
-	<import_environment_var property="value.test.radius.username" variable="RADIUS_USERNAME" />	
-	<import_environment_var property="value.test.radius.password" variable="RADIUS_PASSWORD" />	
-	<import_environment_var property="value.test.radius.identifier" variable="RADIUS_IDENTIFIER" />	
-	<import_environment_var property="value.test.radius.vendor_code" variable="RADIUS_VENDOR_CODE" />	
-	<import_environment_var property="value.test.radius.roles_attribute_id" variable="RADIUS_ATTRIBUTE_ID" />	
+	<!-- These don't have defaults and thus must be provided -->
+	<import_environment_var property="value.test.radius.server" variable="TEST_RADIUS_SERVER" />
+	<import_environment_var property="value.test.radius.secret" variable="TEST_RADIUS_SECRET" />	
+	<import_environment_var property="value.test.radius.username" variable="TEST_RADIUS_USERNAME" />	
+	<import_environment_var property="value.test.radius.password" variable="TEST_RADIUS_PASSWORD" />
+	
+	<!-- These have defaults already and thus are optional -->
+	<import_environment_var property="value.test.radius.identifier" variable="TEST_RADIUS_IDENTIFIER" />	
+	<import_environment_var property="value.test.radius.vendor_code" variable="TEST_RADIUS_VENDOR_CODE" />	
+	<import_environment_var property="value.test.radius.roles_attribute_id" variable="TEST_RADIUS_ATTRIBUTE_ID" />	
 	
 </project>

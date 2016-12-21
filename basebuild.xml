@@ -321,7 +321,7 @@ If you want to use environment variables, you can assign the following confogura
     	</chmod>
     	
     	<chmod perm="755">
-    		<fileset dir="${export_dir}/${value.build.appname}/bin/browser_drivers">
+    		<fileset dir="${export_dir}/${value.build.appname}/bin">
     		    <include name="**/*"/>
     		</fileset>
     	</chmod>
