@@ -51,16 +51,32 @@
     <!-- ================================= 
           target: get_build_number
          ================================= -->
-    <target name="get_build_number">
-        
-        <taskdef name="svn" classpathref="ant.classpath" classname="org.tigris.subversion.svnant.SvnTask" />
-
-        <svn svnkit="true">
-            <info target="${value.build.workingcopy.directory}" />
-            <wcVersion prefix="svn." path="${value.build.workingcopy.directory}" />
-        </svn>
-        
-    </target>
+	<target name="get_build_number">
+		
+		<macrodef name="get_build_info">
+			<attribute name="path" default="${user.dir}" />
+			<attribute name="format" default="ct" />
+			<attribute name="outputproperty" />
+			
+			<sequential>
+			    <exec failonerror="true" executable="git" outputproperty="@{outputproperty}"> <!-- Fail on error is set to true in order to prevent a bad build number from being included -->
+					<arg value="log"/>
+			    	<arg value="-1"/>
+					<arg value="--pretty=format:%@{format}"/>
+			    	<arg value="--abbrev-commit"/>
+					<arg value="@{path}"/>
+			    </exec>
+			</sequential>
+			
+		</macrodef>
+		
+   		<!-- Run git to get the revision number and date -->
+		<get_build_info outputproperty="value.build.number" />
+		<get_build_info format="cD" outputproperty="value.build.date" />
+		
+		<echo>Revision number is: ${value.build.number} (${value.build.date})</echo>
+		
+	</target>
     
     <!-- ================================= 
           target: clean_packages
@@ -100,7 +116,7 @@
             
             <!-- Perform the substitution of the build information -->
             <filterset begintoken="${" endtoken="}"> 
-                <filter token="build.number" value="${svn.revision.max}" />
+                <filter token="build.number" value="${value.build.number}" />
             </filterset>
         </copy>
         
@@ -138,7 +154,7 @@
         <!-- Delete the temporary location so that old files do not get streamed in -->
         <delete dir="${value.temp.directory}" />
         
-        <echo>App ${value.build.appname} build ${svn.revision.max} created: ${value.build.packageoutput.directory}/${value.build.appname}.tar.gz</echo>
+        <echo>App ${value.build.appname} build ${value.build.number} created: ${value.build.packageoutput.directory}/${value.build.appname}.tar.gz</echo>
 
     </target>
     
@@ -159,7 +175,7 @@
           target: deploy
          ================================= -->
     <target name="deploy" depends="setup_tmp_directory_for_deployment,populate_export_dir" description="Deploys the app to an instance of Splunk" >
-        <echo>App ${value.build.appname} build ${svn.revision.max} deployed to ${export_dir}</echo>
+        <echo>App ${value.build.appname} build ${value.build.number} deployed to ${export_dir}</echo>
     </target>
     
     <!-- ================================= 
