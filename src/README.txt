@@ -26,7 +26,19 @@ The RADIUS authentication app will derive the user's roles from the RADIUS serve
 Configuring Splunk
 ================================================
 
-Run setup and specify the information about your RADIUS server. Make sure to select "Enabled RADIUS authentication" to enable the script.
+Install this app into Splunk by doing the following:
+
+  1. Log in to Splunk Web and navigate to "Apps » Manage Apps" via the app dropdown at the top left of Splunk's user interface
+  2. Click the "install app from file" button
+  3. Upload the file by clicking "Choose file" and selecting the app
+  4. Click upload
+  5. Restart Splunk if a dialog asks you to
+
+Configure the RADIUS authentication app once you have it installed:
+
+  1. Select "Manage apps" from the app selector at the top left of Splunk
+  2. Click the link namted "Set up" in the row of the "RADIUS Authentication" app
+  3. Run setup and specify the information about your RADIUS server. Make sure to select "Enabled RADIUS authentication" to enable the script.
 
 It is recommended that you specify a test account so that you can verify that the settings are correct. The setup page will not save the settings unless the test account works which helps ensure that changes are valid before being saved.
 
