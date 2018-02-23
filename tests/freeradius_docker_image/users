@@ -1,0 +1,4 @@
+
+bob    Cleartext-Password := "hello" 
+       Reply-Message := "Hello, %{User-Name}",
+       Splunk-Roles = "can_delete,admin"

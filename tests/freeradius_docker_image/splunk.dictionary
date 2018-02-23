@@ -1,0 +1,4 @@
+VENDOR Splunk 27389
+BEGIN-VENDOR Splunk
+    ATTRIBUTE Splunk-Roles 1 string
+END-VENDOR Splunk

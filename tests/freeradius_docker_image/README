@@ -1,0 +1,17 @@
+To build the docker image:
+
+    docker build -t radius-test .
+
+To run a bash shell on the image:
+
+    docker run -it radius-test
+
+To run it:
+
+    docker run -d -p 1812:1812 -t radius-test
+
+    docker run radius-test -p 1812:1812/udp -i 127.0.0.1
+
+    docker run -p 1812:1812/udp radius-test
+
+Once it is running, use docker stop to stop it.

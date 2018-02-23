@@ -11,6 +11,30 @@
 	<!-- These have defaults already and thus are optional -->
 	<import_environment_var property="value.test.radius.identifier" variable="TEST_RADIUS_IDENTIFIER" />	
 	<import_environment_var property="value.test.radius.vendor_code" variable="TEST_RADIUS_VENDOR_CODE" />	
-	<import_environment_var property="value.test.radius.roles_attribute_id" variable="TEST_RADIUS_ATTRIBUTE_ID" />	
+	<import_environment_var property="value.test.radius.roles_attribute_id" variable="TEST_RADIUS_ATTRIBUTE_ID" />
+
+    <!-- ================================= 
+          target: build_docker_image
+         ================================= -->
+	<target name="build_docker_image">
+		<exec failonerror="true" dir="${basedir}/tests/freeradius_docker_image" executable="docker">
+			<arg value="build"/>
+			<arg value="-t"/>
+			<arg value="radius-test"/>
+			<arg value="."/>
+		</exec>
+	</target>
+
+    <!-- ================================= 
+          target: start_test_radius_server
+         ================================= -->
+	<target name="start_test_radius_server">
+		<exec failonerror="true" dir="${basedir}/tests/freeradius_docker_image" executable="docker">
+			<arg value="run"/>
+			<arg value="-p"/>
+			<arg value="1812:1812/udp"/>
+			<arg value="radius-test"/>
+		</exec>
+	</target>
 	
 </project>
