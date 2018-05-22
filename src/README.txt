@@ -37,7 +37,7 @@ Install this app into Splunk by doing the following:
 Configure the RADIUS authentication app once you have it installed:
 
   1. Select "Manage apps" from the app selector at the top left of Splunk
-  2. Click the link namted "Set up" in the row of the "RADIUS Authentication" app
+  2. Click the link named "Set up" in the row of the "RADIUS Authentication" app
   3. Run setup and specify the information about your RADIUS server. Make sure to select "Enabled RADIUS authentication" to enable the script.
 
 It is recommended that you specify a test account so that you can verify that the settings are correct. The setup page will not save the settings unless the test account works which helps ensure that changes are valid before being saved.
