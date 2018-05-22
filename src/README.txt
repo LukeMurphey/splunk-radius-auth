@@ -90,4 +90,6 @@ Change History
 |         | improved handling of unreadable user info files                                                               |
 |---------|---------------------------------------------------------------------------------------------------------------|
 | 1.3.1   | fixed error that could happen if a request for user info was made and the user's information was not cached   |
+|---------|---------------------------------------------------------------------------------------------------------------|
+| 1.3.2   | added support for preventing logins for RADIUS accounts that have the group "nologin"                         |
 +---------+---------------------------------------------------------------------------------------------------------------+
