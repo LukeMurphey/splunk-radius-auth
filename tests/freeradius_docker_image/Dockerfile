@@ -1,7 +1,7 @@
 # Set the base image
 FROM ubuntu
 
-# Update application repository list and install the Redis server. 
+# Update application repository list and install the freeradius server. 
 RUN apt-get update -y && apt-get install -y freeradius
 #RUN apt-get install -qy freeradius
 
