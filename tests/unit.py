@@ -201,6 +201,33 @@ class TestRadiusAuth(RadiusAuthAppTest):
                 self.fail("admin not in the roles (%s)" % (user.roles) )
         #finally:
         #    junk_file
+
+    def test_auth_nologin(self):
+        
+        # Write out a roles map with 'nologin' for the user
+        roles = ["admin", "power", "nologin"]
+        
+        roles_map_file_path = self.write_auth_csv( self.username, roles )
+        try:
+            # Try authentication
+            ra = RadiusAuth(self.server, self.secret, self.identifier, self.roles_key, vendor_code=self.vendor_code, roles_attribute_id=self.roles_attribute_id)
+            
+            result = ra.authenticate(self.username, self.password, update_user_info=True, directory=self.tmp_dir, roles_map_file_path=roles_map_file_path)
+            
+            self.assertFalse(result)
+            users = UserInfo.getAllUsers( self.tmp_dir )
+            
+            self.assertEquals( len(users), 1)
+            
+            # Get the user
+            user = users[0]
+            self.assertEquals( user.username, self.username)
+            
+            # Make sure the nologin role exists:
+            if 'nologin' not in user.roles:
+                self.fail("nologin not in the roles (%s)" % (user.roles) )
+        finally:
+            os.remove( roles_map_file_path )
             
     def test_auth_auth_info_parse_roles_key(self):
         

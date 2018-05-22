@@ -1208,6 +1208,11 @@ class RadiusAuth():
                     roles = self.getRolesFromReply(reply)
                 else:
                     logger.info("Roles for user '%s' loaded from the roles lookup file: user=%s, roles=%s", username, username, str(roles) )
+
+                # If the user has the role 'nologin', then don't allow them to authenticate
+                if auth_suceeded and 'nologin' in roles:
+                    logger.info("User '%s' being denied login since they have the 'nologin' role: user=%s, roles=%s", username, username, str(roles) )
+                    auth_suceeded = False
                     
                 # Make a new user info object
                 user = UserInfo( username, None, roles)
