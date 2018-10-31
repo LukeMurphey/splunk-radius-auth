@@ -1,3 +1,9 @@
+"""
+
+  ConfFile: 
+  UserInfo: 
+  RadiusAuth: 
+"""
 import pyrad.packet
 from pyrad.client import Client
 from pyrad.dictionary import Dictionary
@@ -28,7 +34,7 @@ def setup_logger(level, name, use_rotating_handler=True):
     if 'SPLUNK_HOME' in os.environ:
         logger.propagate = False # Prevent the log messages from being duplicated in the python.log file
         
-        log_file_path = os.path.join( os.environ['SPLUNK_HOME'], 'var', 'log', 'splunk', 'radius_auth.log' )
+        log_file_path = os.path.join(os.environ['SPLUNK_HOME'], 'var', 'log', 'splunk', 'radius_auth.log')
         
         if use_rotating_handler:
             file_handler = logging.handlers.RotatingFileHandler(log_file_path, maxBytes=25000000, backupCount=5)
@@ -101,7 +107,7 @@ class ConfFile():
             if at_beginning:
                 
                 # Determine if this is the BOM (0xEF,0xBB,0xBF.); see http://en.wikipedia.org/wiki/Byte_order_mark
-                if len(l) > 2 and ( ord(l[0]), ord(l[1]), ord(l[2]) ) == (239, 187, 191):
+                if len(l) > 2 and (ord(l[0]), ord(l[1]), ord(l[2])) == (239, 187, 191):
                     # Drop the BOM
                     l = l[3:]
                     
@@ -263,7 +269,7 @@ class ConfFile():
             return default
 
     @staticmethod
-    def merge( conf_defaults, conf_overriding ):
+    def merge(conf_defaults, conf_overriding):
         """
         Merge the two provided conf file objects. The second argument will take precedence with its values overwriting those from the first argument.
         
@@ -360,7 +366,7 @@ class UserInfo():
             return False
         
     @staticmethod
-    def getAllUsers( directory = None, make_if_non_existent = False ):
+    def getAllUsers(directory = None, make_if_non_existent = False):
         """
         Load all saved users info objects.
         
@@ -370,22 +376,22 @@ class UserInfo():
         
         # Get the directory to load the user info from
         if directory is None:
-            directory = UserInfo.getUserInfoDirectory( make_if_non_existent )
+            directory = UserInfo.getUserInfoDirectory(make_if_non_existent)
         
         # The array below will hold the user objects
         users = []
         
         try:
             # Load the user info files
-            files = os.listdir( directory )
+            files = os.listdir(directory)
             
             for f in files:
                 
                 # Try to load the file. Log an error if the file can not be loaded.
                 try:
-                    users.append( UserInfo.loadFile( os.path.join( directory, f) ) )
+                    users.append(UserInfo.loadFile(os.path.join(directory, f)))
                 except ValueError:
-                    logger.exception( 'Unable to load user file "%s"' % (f) )
+                    logger.exception('Unable to load user file "%s"' % (f))
                 
         except OSError:
             # Path does not exist, likely because the directory has not yet been created
@@ -403,7 +409,7 @@ class UserInfo():
         return hashlib.sha224(self.__str__()).hexdigest()
     
     @staticmethod
-    def getUserInfoDirectory( make_if_non_existent = True ):
+    def getUserInfoDirectory(make_if_non_existent = True):
         """
         Get the default directory where the user info ought to be stored.
         
@@ -415,30 +421,30 @@ class UserInfo():
         if 'SPLUNK_HOME' in os.environ:
             
             # Get the local directory
-            local_path = os.path.join( os.environ['SPLUNK_HOME'], "etc", "apps", APP_NAME, "local" )
+            local_path = os.path.join(os.environ['SPLUNK_HOME'], "etc", "apps", APP_NAME, "local")
 
             # Make the user_info directory
-            full_path = os.path.join( local_path, "user_info" )
+            full_path = os.path.join(local_path, "user_info")
 
         else:
             
             # Get the local directory
-            local_path =  os.path.join( "local" )
+            local_path =  os.path.join("local")
             
             # Make the user_info directory
-            full_path = os.path.join( local_path, "user_info" )
+            full_path = os.path.join(local_path, "user_info")
         
         # Make the local directory as necessary
         if make_if_non_existent:
             try:
-                os.mkdir( local_path )
+                os.mkdir(local_path)
             except Exception:
                 pass # Couldn't make the path
         
         # Make the user_info directory as necessary
         if make_if_non_existent:
             try:
-                os.mkdir( full_path )
+                os.mkdir(full_path)
             except Exception:
                 pass # Couldn't make the path
             
@@ -488,13 +494,13 @@ class UserInfo():
         
         # Get the directory to save the user info to
         if directory is None:
-            directory = UserInfo.getUserInfoDirectory( make_dirs_if_non_existent )
+            directory = UserInfo.getUserInfoDirectory(make_dirs_if_non_existent)
             
         # Get the unique identifier associated with the username
         uid = hashlib.md5(self.username).hexdigest()
             
         # Determine if the user info object already exists
-        files = os.listdir( directory )
+        files = os.listdir(directory)
         found = (uid + ".json") in files
         
         # Determine if the user info has changed
@@ -513,11 +519,11 @@ class UserInfo():
         if needs_saving or force:
             
             # Get the file descriptor
-            fp = open( os.path.join( directory, (uid + ".json") ), 'w' )
+            fp = open(os.path.join(directory, (uid + ".json")), 'w')
             
             # Try to save the file and close the file pointer
             try:
-                fp.write( json.dumps( self.toDict() ) )
+                fp.write(json.dumps(self.toDict()))
             finally:
                 fp.close()
             
@@ -526,7 +532,7 @@ class UserInfo():
             return False
     
     @staticmethod
-    def loadFile( path ):
+    def loadFile(path):
         """
         Load the user-info from the given file.
         
@@ -547,7 +553,7 @@ class UserInfo():
             realname = user_dict.get("realname", None)
             roles = user_dict.get("roles", None)
             
-            user_info = UserInfo( username, realname, roles )
+            user_info = UserInfo(username, realname, roles)
             
             # Return the instance
             return user_info
@@ -558,7 +564,7 @@ class UserInfo():
                 fp.close()
     
     @staticmethod
-    def load( username, directory = None ):
+    def load(username, directory = None):
         """
         Loads a UserInfo instance based on the contents of the user's file stored on disk.
         
@@ -575,7 +581,7 @@ class UserInfo():
         file_name = hashlib.md5(username).hexdigest() + ".json"
         
         # Try to load the file
-        path = os.path.join( directory, file_name )
+        path = os.path.join(directory, file_name)
         
         return UserInfo.loadFile(path)
         
@@ -694,7 +700,7 @@ class RadiusAuth():
         if roles_attribute_id is not None:
             self.roles_attribute_id = roles_attribute_id
         
-    def parseRolesKey( self, roles_key, default_vendor_code=27389, default_vendor_attribute_id=0, default_value=None ):
+    def parseRolesKey(self, roles_key, default_vendor_code=27389, default_vendor_attribute_id=0, default_value=None):
         """
         Parses the roles key that is provided by the RADIUS server into the vendor code and attribute. Returns default values if they cannot be parsed.
         
@@ -732,7 +738,7 @@ class RadiusAuth():
             return vendor_code, vendor_attribute_id
         
     @staticmethod
-    def stringToIntegerOrDefault( str_value, default_value=None ):
+    def stringToIntegerOrDefault(str_value, default_value=None):
         """
         Converts the given string to an integer or returns the default value if it is not a valid integer.
         
@@ -780,9 +786,9 @@ class RadiusAuth():
         """
         
         if "SPLUNK_HOME" in os.environ:
-            return os.path.join( os.environ["SPLUNK_HOME"], "etc", "apps", APP_NAME )
+            return os.path.join(os.environ["SPLUNK_HOME"], "etc", "apps", APP_NAME)
     
-    def loadConf( self, directory = None ):
+    def loadConf(self, directory = None):
         """
         Load the settings from the conf files.
         
@@ -797,14 +803,14 @@ class RadiusAuth():
         # Load the default conf
         default_conf = ConfFile()
         try:
-            default_conf.loadFile( os.path.join(directory, "default", CONF_FILE) )
+            default_conf.loadFile(os.path.join(directory, "default", CONF_FILE))
         except IOError:
             pass # File does not exist
         
         # Load the local conf
         local_conf = ConfFile()
         try:
-            local_conf.loadFile( os.path.join(directory, "local", CONF_FILE) )
+            local_conf.loadFile(os.path.join(directory, "local", CONF_FILE))
         except IOError:
             pass # File does not exist
          
@@ -819,7 +825,7 @@ class RadiusAuth():
         self.backup_server         = combined.get(RadiusAuth.RADIUS_BACKUP_SERVER, None)
         self.backup_server_secret  = combined.get(RadiusAuth.RADIUS_BACKUP_SECRET, None)
         self.roles_key             = combined.get(RadiusAuth.ROLES_KEY, None)
-        self.default_roles         = self.splitRoles( combined.get(RadiusAuth.DEFAULT_ROLES, None) )
+        self.default_roles         = self.splitRoles(combined.get(RadiusAuth.DEFAULT_ROLES, None))
         
         # Get the roles attribute ID and vendor as integers
         roles_attribute_id_tmp     = combined.get(RadiusAuth.ROLE_ATTRIBUTE, RadiusAuth.DEFAULT_RADIUS_ROLE_ATTRIBUTE_ID)
@@ -828,13 +834,13 @@ class RadiusAuth():
         try:
             roles_attribute_id = int(roles_attribute_id_tmp)
         except ValueError:
-            logger.warn("The roles attribute is not a valid integer (is %s)" % (roles_attribute_id_tmp) )
+            logger.warn("The roles attribute is not a valid integer (is %s)" % (roles_attribute_id_tmp))
             roles_attribute_id = RadiusAuth.DEFAULT_RADIUS_ROLE_ATTRIBUTE_ID
             
         try:
             vendor_code = int(vendor_code_tmp)
         except ValueError:
-            logger.warn("The vendor code is not a valid integer (is %s)" % (vendor_code_tmp) )
+            logger.warn("The vendor code is not a valid integer (is %s)" % (vendor_code_tmp))
             vendor_code = RadiusAuth.DEFAULT_RADIUS_VENDOR_CODE
         
         self.configure_roles_attribute(self.roles_key, vendor_code, roles_attribute_id)
@@ -934,7 +940,7 @@ class RadiusAuth():
         else:
             return None
         
-    def loadRolesMap(self, file_path=None, username=None ):
+    def loadRolesMap(self, file_path=None, username=None):
         """
         Loads the list of roles from the provided path and returns a dictionary of users (as the key) with a list of the roles
         as the value.
@@ -958,7 +964,7 @@ class RadiusAuth():
                 return None
             
             # Get the file path
-            file_path = os.path.join( app_dir, "lookups", RadiusAuth.ROLES_MAP_LOOKUP_FILENAME )
+            file_path = os.path.join(app_dir, "lookups", RadiusAuth.ROLES_MAP_LOOKUP_FILENAME)
             
         # This user map will map the username (the key) to the users' roles
         user_role_map = {}
@@ -978,11 +984,11 @@ class RadiusAuth():
                         pass 
                     
                     # Detect rows with no user name
-                    elif len(row) == 0 or len( row[RadiusAuth.ROLES_MAP_USERNAME].strip() ) == 0:
+                    elif len(row) == 0 or len(row[RadiusAuth.ROLES_MAP_USERNAME].strip()) == 0:
                         logger.warn('Row %i of the "%s" file has no username', row_number, file_path)
                     
                     # Detect rows with no roles
-                    elif len(row) == 1 or len( row[RadiusAuth.ROLES_MAP_ROLES].strip() ) == 0:
+                    elif len(row) == 1 or len(row[RadiusAuth.ROLES_MAP_ROLES].strip()) == 0:
                         logger.warn('Row %i of the "%s" file has no roles', row_number, file_path)
                         
                     # Skip the row if it isn't for the given user
@@ -1105,12 +1111,12 @@ class RadiusAuth():
             
             # Add the attribute to the list
             if attribute_id is not None:
-                attrs.append( "vendor_code_%s_attribute_%s = %s" % (str(vendor_code), str(attribute_id), str(v) ) )
+                attrs.append("vendor_code_%s_attribute_%s = %s" % (str(vendor_code), str(attribute_id), str(v)))
             else:
-                attrs.append( "vendor_code_%s_attribute_na = %s" % (str(vendor_code), str(v) ) )
+                attrs.append("vendor_code_%s_attribute_na = %s" % (str(vendor_code), str(v)))
         
         # Send out the message
-        logger.debug( "Received the following fields upon login: %s" % ( ", ".join(attrs) ) )
+        logger.debug("Received the following fields upon login: %s" % (", ".join(attrs)))
     
     def perform_auth_request(self, server, secret, username, password):
         """
@@ -1124,7 +1130,7 @@ class RadiusAuth():
         """
         
         # Create a new connection to the server
-        srv = Client(server=server, secret=secret, dict=Dictionary( RadiusAuth.getDictionaryFile() ))
+        srv = Client(server=server, secret=secret, dict=Dictionary(RadiusAuth.getDictionaryFile()))
         
         # Create the authentication packet
         req=srv.CreateAuthPacket(code=pyrad.packet.AccessRequest, User_Name=username, NAS_Identifier=self.identifier)
@@ -1141,7 +1147,7 @@ class RadiusAuth():
             # problems that can be ignored. We need to be able to recover
             return None
     
-    def authenticate(self, username, password, update_user_info=True, directory=None, log_reply_items=True, roles_map_file_path=None ):
+    def authenticate(self, username, password, update_user_info=True, directory=None, log_reply_items=True, roles_map_file_path=None):
         """
         Perform an authentication attempt to the RADIUS server. Return true if the authentication succeeded.
         
@@ -1163,7 +1169,7 @@ class RadiusAuth():
         reply = self.perform_auth_request(self.server, self.secret, username, password)
         
         # Check the reply
-        if reply is not None and reply.code==pyrad.packet.AccessAccept:
+        if reply is not None and reply.code == pyrad.packet.AccessAccept:
             auth_suceeded = True
             logger.info("Authentication to primary RADIUS server succeeded")
         else:
@@ -1207,15 +1213,15 @@ class RadiusAuth():
                     # Get the roles from the reply
                     roles = self.getRolesFromReply(reply)
                 else:
-                    logger.info("Roles for user '%s' loaded from the roles lookup file: user=%s, roles=%s", username, username, str(roles) )
+                    logger.info("Roles for user '%s' loaded from the roles lookup file: user=%s, roles=%s", username, username, str(roles))
 
                 # If the user has the role 'nologin', then don't allow them to authenticate
                 if auth_suceeded and 'nologin' in roles:
-                    logger.info("User '%s' being denied login since they have the 'nologin' role: user=%s, roles=%s", username, username, str(roles) )
+                    logger.info("User '%s' being denied login since they have the 'nologin' role: user=%s, roles=%s", username, username, str(roles))
                     auth_suceeded = False
                     
                 # Make a new user info object
-                user = UserInfo( username, None, roles)
+                user = UserInfo(username, None, roles)
                 
                 # Save the user
                 user.save(directory)
@@ -1239,7 +1245,7 @@ def readInputs():
     # Return the dictionary
     return return_dict
 
-def userLogin( args, out=sys.stdout, directory = None ):
+def userLogin(args, out=sys.stdout, directory = None):
     """
     Performs a login and print the result in such a way that Splunk can read it.
     
@@ -1263,19 +1269,19 @@ def userLogin( args, out=sys.stdout, directory = None ):
     if ra.authenticate(username, password, directory=directory):
         
         # Log that the command has executed
-        logger.info( "function=userLogin called, user '%s' authenticated action=success, username=%s" % (username, username) )
+        logger.info("function=userLogin called, user '%s' authenticated action=success, username=%s" % (username, username))
         
         out.write(SUCCESS)
         return 0
     else:
         
         # Log that the command has executed
-        logger.info( "function=userLogin called, user '%s' authenticated action=fail, username=%s" % (username, username) )
+        logger.info("function=userLogin called, user '%s' authenticated action=fail, username=%s" % (username, username))
         
         out.write(FAILED)
         return -1
 
-def getUserInfo( args, out=sys.stdout, directory = None ):
+def getUserInfo(args, out=sys.stdout, directory = None):
     """
     Get the user info and print the info in such a way that Splunk can read it.
     
@@ -1294,21 +1300,21 @@ def getUserInfo( args, out=sys.stdout, directory = None ):
         user = None
     
     if user is None:
-        logger.info( "function=getUserInfo called, user '%s' not found, username=%s" % (username, username) )
+        logger.info("function=getUserInfo called, user '%s' not found, username=%s" % (username, username))
         out.write(FAILED)
         return -1
     else:
-        logger.info( "function=getUserInfo called, user '%s' found, username=%s" % (username, username) )
+        logger.info("function=getUserInfo called, user '%s' found, username=%s" % (username, username))
         out.write(SUCCESS + ' ' + USER_INFO + "=" + str(user))
         return 0
 
-def getUsers( args, out=sys.stdout, directory = None ):
+def getUsers(args, out=sys.stdout, directory = None):
     
     # Get all of the users from the cache
     users = UserInfo.getAllUsers(directory)
     
     # Log that the command has executed
-    logger.info( "function=getUsers called, '%i' users found, users=%i" % (len(users), len(users)) )
+    logger.info("function=getUsers called, '%i' users found, users=%i" % (len(users), len(users)))
     
     # Create the output string with the users
     output = ""
@@ -1320,7 +1326,7 @@ def getUsers( args, out=sys.stdout, directory = None ):
     out.write(SUCCESS + output)
     return 0
 
-def getSearchFilter( args ):
+def getSearchFilter(args):
     pass
         
 
@@ -1329,12 +1335,12 @@ if __name__ == "__main__":
     args = readInputs()
     
     if method == "userLogin":
-        userLogin( args )
+        userLogin(args)
     elif method == "getUsers":
-        getUsers( args )
+        getUsers(args)
     elif method == "getUserInfo":
-        getUserInfo( args )
+        getUserInfo(args)
     #elif method == "getSearchFilter":
-        #getSearchFilter( args )
+        #getSearchFilter(args)
     else:
         print "ERROR unknown function call: " + method
