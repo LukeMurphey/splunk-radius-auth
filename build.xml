@@ -16,7 +16,7 @@
     <!-- ================================= 
           target: build_docker_image
          ================================= -->
-	<target name="build_docker_image">
+	<target name="docker_build">
 		<exec failonerror="true" dir="${basedir}/tests/freeradius_docker_image" executable="docker">
 			<arg value="build"/>
 			<arg value="-t"/>
@@ -34,6 +34,40 @@
 			<arg value="-p"/>
 			<arg value="1812:1812/udp"/>
 			<arg value="radius-test"/>
+		</exec>
+	</target>
+
+    <!-- ================================= 
+          target: docker_running_id
+         ================================= -->
+	<target name="docker_running_id" description="Get the ID of the running docker image">
+		<exec executable="docker"
+			outputproperty="docker_id"
+			failonerror="false">
+				<arg value="ps"/>
+				<arg value="-q"/>
+				<arg value="--filter"/>
+				<arg value="ancestor=radius-test"/>
+		</exec>
+
+		<script language="javascript">
+			var docker_id = project.getProperty("docker_id");
+
+			if(docker_id.length > 0){
+				project.setProperty("docker_running", "true");
+			}
+		</script>
+	</target>
+
+    <!-- ================================= 
+          target: docker_stop
+         ================================= -->
+	<target name="docker_stop" description="Stop the docker image" depends="docker_running_id" if="docker_running">
+		<echo message="Running docker ID is: ${docker_id}" />
+
+		<exec executable="docker">
+			<arg value="stop"/>
+			<arg value="${docker_id}"/>
 		</exec>
 	</target>
 	
