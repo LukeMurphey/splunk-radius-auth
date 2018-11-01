@@ -12,16 +12,21 @@ class ClearRadiusCache(SearchCommand):
     from Splunk's user list that were registered by authenticating via RADIUS.
     """
 
-    def __init__(self, user=None, days_ago=None):
+    def __init__(self, user=None, days_ago=None, test=False):
         
         # Stop if the necessary arguments are not provided
-        if user is None:
-            raise ValueError('The user name of the entry to remove must be provided')
+        if user is None and days_ago is None:
+            raise ValueError('Either the "user" or "days_ago" parameter must be provided')
 
         # Save the parameters
         self.user = user
-        self.days_ago = days_ago
-        
+        self.test = str(test).strip().lower() not in ["false", "0", "f"]
+
+        try:
+            self.days_ago = int(days_ago)
+        except ValueError:
+            raise ValueError('The "days_ago" parameter must be a valid integer greater than zero')
+
         # Initialize the class
         SearchCommand.__init__( self, run_in_preview=True, logger_name='clear_radius_cache')
     
@@ -32,10 +37,31 @@ class ClearRadiusCache(SearchCommand):
             raise ValueError('You do not have permission to remove entries from the cache' +
                              ' (you need the "clear_radius_user_cache" capability)')
 
-        if UserInfo.clearUserInfo(self.user):
-            self.output_results([{'user': self.user, 'message': 'The user record was cleared for the user "' + self.user + '"'}])
-        else:
-            self.output_results([{'user': self.user, 'message': 'No user record was found for the user "' + self.user + '"'}])
+        # Clear the user if requested
+        if self.user is not None:
+            if UserInfo.clearUserInfo(self.user):
+                self.output_results([{'user': self.user, 'message': 'The user record was cleared for the user "' + self.user + '"'}])
+            else:
+                self.output_results([{'user': self.user, 'message': 'No user record was found for the user "' + self.user + '"'}])
+
+        # Clear the cache by date if requested
+        if self.days_ago is not None:
+            deleted_users = UserInfo.clearCache(self.days_ago, test=self.test)
+
+            deleted_users_dicts = []
+
+            if self.test:
+                message = 'Would be removed from the cache when not run in test mode'
+            else:
+                message = 'Successfully removed from the cache'
+
+            for user in deleted_users:
+                deleted_users_dicts.append({
+                    'user': user,
+                    'message': message
+                })
+
+            self.output_results(deleted_users_dicts)
 
 
 if __name__ == '__main__':
