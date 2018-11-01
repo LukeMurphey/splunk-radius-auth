@@ -497,6 +497,45 @@ class UserInfo():
         except OSError:
             return False
 
+    @staticmethod
+    def clearCache(daysAgo, directory=None, test=False):
+        """
+        Remove the user information if the last login is older than the given date.
+
+        All entries will be removed if days ago is set to 0.
+        
+        Arguments:
+        daysAgo -- The number of days ago that the last login date for the entry must be older than to be cleared
+        directory -- The directory where the user info files are located.
+        test -- Don't actually delete the entries, just count them
+        """
+
+        # Make sure that the arguments are valid
+        if daysAgo < 0:
+            raise ValueError('The number of days ago to delete must be zero or greater')
+
+        # Load the entries
+        users = UserInfo.getAllUsers(directory)
+
+        # Determine the date that the entries must be after
+        afterDate = (calendar.timegm(time.gmtime()) - (daysAgo * 86400))
+
+        # Track the entries that have been deleted
+        deleted = 0
+
+        # Iterate through each one and clear it if is older than the given date
+        for user in users:
+            
+            if daysAgo == 0 or (user.lastLoginTime is not None and user.lastLoginTime < afterDate):
+                deleted = deleted + 1
+
+                if not test:
+                    UserInfo.clearUserInfo(user.username, directory)
+
+        # Return the number of deleted items
+        return deleted
+
+
     def toDict(self):
         """
         Convert the user-info to a dictionary. Useful for converting user-info objects from JSON files.

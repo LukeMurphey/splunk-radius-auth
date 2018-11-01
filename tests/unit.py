@@ -722,6 +722,38 @@ class TestUserInfo(unittest.TestCase):
         # Verify the file doesn't exist
         self.assertFalse(os.path.isfile(os.path.join( self.tmp_dir, "70fce03a92dd14d910839bccbd1b474b.json")))
 
+    def test_clear_user_cache_by_time(self):
+
+        # Make some users
+        old_account = UserInfo("old_account", "Luke Murphey", ["admin", "power"], 1000)
+        old_account2 = UserInfo("old_account2", "Luke Murphey", ["admin", "power"], 2000)
+
+        no_date = UserInfo("no_date", "Luke Murphey", ["admin", "power"])
+        new_account = UserInfo("new_account", "Luke Murphey", ["admin", "power"])
+        new_account.updateLastLogin()
+
+        old_account.save( self.tmp_dir )
+        old_account2.save( self.tmp_dir )
+        no_date.save( self.tmp_dir )
+        new_account.save( self.tmp_dir )
+
+        # Confirm the number of entries after creation
+        self.assertEquals(len(UserInfo.getAllUsers(self.tmp_dir)), 4)
+
+        # Clear the cache
+        self.assertEquals(UserInfo.clearCache(30, self.tmp_dir), 2)
+
+        # Confirm the number of entries after deletion
+        users = UserInfo.getAllUsers(self.tmp_dir)
+        self.assertEquals(len(users), 2)
+
+        # Clear all entries from the cache
+        self.assertEquals(UserInfo.clearCache(0, self.tmp_dir), 2)
+
+        # Confirm the number of entries after deletion
+        users = UserInfo.getAllUsers(self.tmp_dir)
+        self.assertEquals(len(users), 0)
+
 class TestMainAuthMethods(RadiusAuthAppTest):
     
     def test_user_login(self):
