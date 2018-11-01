@@ -741,14 +741,16 @@ class TestUserInfo(unittest.TestCase):
         self.assertEquals(len(UserInfo.getAllUsers(self.tmp_dir)), 4)
 
         # Clear the cache
-        self.assertEquals(UserInfo.clearCache(30, self.tmp_dir), 2)
+        removed_entries = UserInfo.clearCache(30, self.tmp_dir)
+        self.assertEquals(len(removed_entries), 2)
 
         # Confirm the number of entries after deletion
         users = UserInfo.getAllUsers(self.tmp_dir)
         self.assertEquals(len(users), 2)
 
         # Clear all entries from the cache
-        self.assertEquals(UserInfo.clearCache(0, self.tmp_dir), 2)
+        removed_entries = UserInfo.clearCache(0, self.tmp_dir)
+        self.assertEquals(len(removed_entries), 2)
 
         # Confirm the number of entries after deletion
         users = UserInfo.getAllUsers(self.tmp_dir)

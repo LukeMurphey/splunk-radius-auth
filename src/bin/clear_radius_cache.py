@@ -12,7 +12,7 @@ class ClearRadiusCache(SearchCommand):
     from Splunk's user list that were registered by authenticating via RADIUS.
     """
 
-    def __init__(self, user=None):
+    def __init__(self, user=None, days_ago=None):
         
         # Stop if the necessary arguments are not provided
         if user is None:
@@ -20,6 +20,7 @@ class ClearRadiusCache(SearchCommand):
 
         # Save the parameters
         self.user = user
+        self.days_ago = days_ago
         
         # Initialize the class
         SearchCommand.__init__( self, run_in_preview=True, logger_name='clear_radius_cache')
