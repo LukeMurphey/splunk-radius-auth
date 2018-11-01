@@ -1,8 +1,9 @@
 """
+This module contains the code necessary for Splunk to authenticate users via RADIUS.
 
-  ConfFile: 
-  UserInfo: 
-  RadiusAuth: 
+  ConfFile: for reading and writing .conf files (since the binary cannot access REST due to being called from the CLI)
+  UserInfo: represents users and facilitates reading and writing from the  SPLUNK_HOME/etc/apps/radius_auth/local/user_info directory
+  RadiusAuth: communicates with a RADIUS server for authenticating users
 """
 import pyrad.packet
 from pyrad.client import Client
@@ -451,6 +452,33 @@ class UserInfo():
         # Return the path
         return full_path
          
+    @staticmethod
+    def clearUserInfo(username, directory=None):
+        """
+        Remove the user information for the given username, if one exists. True will be returned if a record was found; false otherwise.
+        
+        Arguments:
+        username -- The username of the record to be removed.
+        directory -- The directory where the user info files are located.
+        """
+
+        # Get the directory where the user info is stored
+        if directory is None:
+            directory = UserInfo.getUserInfoDirectory(False)
+
+        # Get the unique identifier associated with the username
+        uid = hashlib.md5(username).hexdigest()
+
+        # Get the full path
+        full_path = os.path.join(directory, uid + ".json")
+
+        # Delete the directory
+        try:
+            os.remove(full_path)
+            return True
+        except OSError:
+            return False
+
     def toDict(self):
         """
         Convert the user-info to a dictionary. Useful for converting user-info objects from JSON files.
