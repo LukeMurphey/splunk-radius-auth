@@ -668,6 +668,8 @@ class TestUserInfo(unittest.TestCase):
     def test_save_and_load_file(self):
         
         ui_before = UserInfo( "lmurphey", "Luke Murphey", ["admin", "power"])
+        ui_before.updateLastLogin()
+        ui_before.updateLoadSignature()
         
         self.assertTrue( ui_before.save( self.tmp_dir ), "File was not saved properly" )
         
@@ -676,6 +678,7 @@ class TestUserInfo(unittest.TestCase):
         self.assertEquals( ui_after.realname, ui_before.realname)
         self.assertEquals( ui_after.username, ui_before.username)
         self.assertEquals( ui_after.roles, ui_before.roles)
+        self.assertEquals( ui_after.lastLoginTime, ui_before.lastLoginTime)
         self.assertEquals( ui_after.load_signature, ui_before.load_signature)
         
     def test_load_users(self):
@@ -719,7 +722,7 @@ class TestUserInfo(unittest.TestCase):
         # Verify the file doesn't exist
         self.assertFalse(os.path.isfile(os.path.join( self.tmp_dir, "70fce03a92dd14d910839bccbd1b474b.json")))
 
-class TestMainAuthMehods(RadiusAuthAppTest):
+class TestMainAuthMethods(RadiusAuthAppTest):
     
     def test_user_login(self):
         

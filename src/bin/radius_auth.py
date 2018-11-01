@@ -507,6 +507,7 @@ class UserInfo():
         d['username'] = self.username
         d['realname'] = self.realname
         d['roles'] = self.roles
+        d['lastLoginTime'] = self.lastLoginTime
         
         return d
     
@@ -601,8 +602,13 @@ class UserInfo():
             username = user_dict["username"]
             realname = user_dict.get("realname", None)
             roles = user_dict.get("roles", None)
+            lastLoginTime = user_dict.get("lastLoginTime", None)
+
+            # Convert the value to an int
+            if lastLoginTime is not None:
+                lastLoginTime = int(lastLoginTime)
             
-            user_info = UserInfo(username, realname, roles)
+            user_info = UserInfo(username, realname, roles, lastLoginTime)
             
             # Return the instance
             return user_info
