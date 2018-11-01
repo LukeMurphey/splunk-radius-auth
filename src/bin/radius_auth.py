@@ -503,6 +503,8 @@ class UserInfo():
         Remove the user information if the last login is older than the given date.
 
         All entries will be removed if days ago is set to 0.
+
+        This function returns the list of removed usernames.
         
         Arguments:
         daysAgo -- The number of days ago that the last login date for the entry must be older than to be cleared
@@ -521,18 +523,18 @@ class UserInfo():
         afterDate = (calendar.timegm(time.gmtime()) - (daysAgo * 86400))
 
         # Track the entries that have been deleted
-        deleted = 0
+        deleted = []
 
         # Iterate through each one and clear it if is older than the given date
         for user in users:
             
             if daysAgo == 0 or (user.lastLoginTime is not None and user.lastLoginTime < afterDate):
-                deleted = deleted + 1
+                deleted.append(user.username)
 
                 if not test:
                     UserInfo.clearUserInfo(user.username, directory)
 
-        # Return the number of deleted items
+        # Return the deleted items
         return deleted
 
 
