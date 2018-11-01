@@ -682,7 +682,25 @@ class TestUserInfo(unittest.TestCase):
         ui = UserInfo( "jdoe", "John Doe", ["admin", "power"])
         
         self.assertEquals( str(ui), ";jdoe;John Doe;admin:power")
+
+    def test_clear_user_cache(self):
+        # Save a user to the cache
+        ui_before = UserInfo("lmurphey2", "Luke Murphey", ["admin", "power"])
+        self.assertTrue(ui_before.save( self.tmp_dir ), "File was not saved properly")
         
+        # Clear the user info
+        self.assertTrue(UserInfo.clearUserInfo("lmurphey2", os.path.join( self.tmp_dir)))
+
+        # Verify the file doesn't exist
+        self.assertFalse(os.path.isfile(os.path.join( self.tmp_dir, "70fce03a92dd14d910839bccbd1b474b.json")))
+
+    def test_clear_user_cache_doesnt_exist(self):
+        # Clear the user info
+        self.assertFalse(UserInfo.clearUserInfo("lmurphey2", os.path.join( self.tmp_dir)))
+
+        # Verify the file doesn't exist
+        self.assertFalse(os.path.isfile(os.path.join( self.tmp_dir, "70fce03a92dd14d910839bccbd1b474b.json")))
+
 class TestMainAuthMehods(RadiusAuthAppTest):
     
     def test_user_login(self):
