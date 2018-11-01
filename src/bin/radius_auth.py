@@ -18,6 +18,8 @@ import json
 import logging
 import logging.handlers
 import re
+import time
+import calendar
 
 def setup_logger(level, name, use_rotating_handler=True):
     """
@@ -318,7 +320,7 @@ class UserInfo():
     See http://docs.splunk.com/Documentation/Splunk/latest/Admin/configureSplunktousePAMorRADIUSauthentication#Create_the_authentication_script
     """
     
-    def __init__(self, username, realname = None, roles = None):
+    def __init__(self, username, realname = None, roles = None, lastLoginTime = None):
         """
         Set up a user info object.
         
@@ -343,10 +345,20 @@ class UserInfo():
             self.roles = []
         else:
             self.roles = roles[:]
-            
+
+        # Set up the last login time
+        self.lastLoginTime = lastLoginTime
+
         # Update the signature so that we can determine if the instance has been modified from one stored on disk
         self.updateLoadSignature()
             
+    def updateLastLogin(self):
+        """
+        Set the last login time to now (in UTC).
+        """
+
+        self.lastLoginTime = calendar.timegm(time.gmtime())
+        
     def updateLoadSignature(self):
         """
         Update the signature that determine if the user info has been modified.
@@ -370,9 +382,10 @@ class UserInfo():
     def getAllUsers(directory = None, make_if_non_existent = False):
         """
         Load all saved users info objects.
-        
+
         Arguments:
-        directory -- The directory that contains the user info files; will default to a directory within the local/user_info directory of the app if unassigned
+        directory -- The directory that contains the user info files; will default to a directory
+                     within the local/user_info directory of the app if unassigned
         """
         
         # Get the directory to load the user info from
@@ -407,7 +420,12 @@ class UserInfo():
         Generates a unique identifier that can be used to determine if the user information has changed.
         """
         
-        return hashlib.sha224(self.__str__()).hexdigest()
+        if self.lastLoginTime is None:
+            lastLoginTime = ''
+        else:
+            lastLoginTime = self.lastLoginTime
+
+        return hashlib.sha224(self.__str__() + ":" + str(lastLoginTime)).hexdigest()
     
     @staticmethod
     def getUserInfoDirectory(make_if_non_existent = True):
@@ -511,11 +529,14 @@ class UserInfo():
     
     def save(self, directory = None, force = False, make_dirs_if_non_existent = True):
         """
-        Save the user info to disk. Returns a boolean indicating whether an updated was saved. Note that this method will only save the file if the file does not
-        already exist or if it is not different than the current instance. The save function will try to avoid saving the file in order to prevent concurrency issues.
+        Save the user info to disk. Returns a boolean indicating whether an updated record was
+        saved. Note that this method will only save the file if the file does not already
+        exist or if it is not different than the current instance. The save function will try to
+        avoid saving the file in order to prevent concurrency issues.
         
         Arguments:
-        directory -- The directory that contains the user info files; will default to a directory within the local/user_info directory of the app if unassigned
+        directory -- The directory that contains the user info files; will default to a directory
+                     within the local/user_info directory of the app if unassigned
         force -- Always save the user-info object even if the file already exists and is the same
         make_dirs_if_non_existent -- Make the directory to store the ser-info objects
         """
@@ -1218,7 +1239,7 @@ class RadiusAuth():
             reply = self.perform_auth_request(self.backup_server, secret, username, password)
             
             # Check the reply
-            if reply is not None and reply.code==pyrad.packet.AccessAccept:
+            if reply is not None and reply.code == pyrad.packet.AccessAccept:
                 auth_suceeded = True
                 logger.info("Authentication to secondary RADIUS server succeeded")
             else:
@@ -1250,7 +1271,10 @@ class RadiusAuth():
                     
                 # Make a new user info object
                 user = UserInfo(username, None, roles)
-                
+
+                # Update the last login time
+                user.updateLastLogin()
+
                 # Save the user
                 user.save(directory)
             

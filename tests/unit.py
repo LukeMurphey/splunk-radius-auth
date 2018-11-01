@@ -5,6 +5,7 @@ import csv
 import re
 import tempfile
 import shutil
+import time
 from StringIO import StringIO
 import os
 
@@ -619,6 +620,23 @@ class TestUserInfo(unittest.TestCase):
         
         ui.realname = "Luke Murphey"
         
+        self.assertTrue( ui.hasChanged() )
+
+    def test_signature_change_with_login_time(self):
+        
+        ui = UserInfo( "jdoe", "John Doe", ["admin", "power"])
+        
+        self.assertFalse( ui.hasChanged() )
+        
+        ui.updateLastLogin()
+
+        self.assertTrue( ui.hasChanged() )
+        ui.updateLoadSignature()
+        self.assertFalse( ui.hasChanged() )
+
+        # Let the time change a bit by sleeping a bit
+        time.sleep(2)
+        ui.updateLastLogin()
         self.assertTrue( ui.hasChanged() )
         
     def test_to_dict(self):
