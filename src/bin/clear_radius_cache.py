@@ -31,7 +31,7 @@ class ClearRadiusCache(SearchCommand):
             raise ValueError('The "days_ago" parameter must be a valid integer greater than zero')
 
         # Initialize the class
-        SearchCommand.__init__( self, run_in_preview=True, logger_name='clear_radius_cache')
+        SearchCommand.__init__(self, run_in_preview=True, logger_name='clear_radius_cache')
     
     def handle_results(self, results, session_key, in_preview):
 
@@ -51,12 +51,15 @@ class ClearRadiusCache(SearchCommand):
             else:
                 if UserInfo.clearUserInfo(self.user):
                     self.output_results([{'user': self.user, 'message': 'The user record was cleared for the user "' + self.user + '"'}])
+                    self.logger.info('Successfully removed cache entry for user=%s' % self.user)
                 else:
                     self.output_results([{'user': self.user, 'message': 'No user record was found for the user "' + self.user + '"'}])
 
         # Clear the cache by date if requested
         if self.days_ago is not None:
             deleted_users = UserInfo.clearCache(self.days_ago, test=self.test)
+
+            self.logger.info('Successfully removed cache entries for users that have not logged in within days=%i, count_deleted=%i' % (self.days_ago, len(deleted_users)))
 
             deleted_users_dicts = []
 
