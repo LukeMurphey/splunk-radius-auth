@@ -471,6 +471,36 @@ class UserInfo():
         return full_path
          
     @staticmethod
+    def getUserInfo(username, directory=None):
+        """
+        Get the user information for the given username, if a record exists for them.
+
+        None will be returned if no file exists for the user
+        
+        Arguments:
+        username -- The username of the record to be removed.
+        directory -- The directory where the user info files are located.
+        """
+
+        # Get the directory where the user info is stored
+        if directory is None:
+            directory = UserInfo.getUserInfoDirectory(False)
+
+        # Get the unique identifier associated with the username
+        uid = hashlib.md5(username).hexdigest()
+
+        # Get the full path
+        full_path = os.path.join(directory, uid + ".json")
+
+        try:
+            return UserInfo.loadFile(full_path)
+        except ValueError:
+            logger.exception('Unable to load user file "%s"' % (full_path))
+        except IOError:
+            # File could not be found, it doesn't appear to exist
+            return None
+
+    @staticmethod
     def clearUserInfo(username, directory=None):
         """
         Remove the user information for the given username, if one exists. True will be returned if a record was found; false otherwise.

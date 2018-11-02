@@ -756,6 +756,16 @@ class TestUserInfo(unittest.TestCase):
         users = UserInfo.getAllUsers(self.tmp_dir)
         self.assertEquals(len(users), 0)
 
+    def test_load_user_file(self):
+        
+        user = UserInfo("no_date", "Luke Murphey", ["admin", "power"])
+        user.save(self.tmp_dir)
+
+        # Try to load the given user
+        loaded_user = UserInfo.getUserInfo(user.username, self.tmp_dir)
+
+        self.assertEquals(user.username, loaded_user.username)
+
 class TestMainAuthMethods(RadiusAuthAppTest):
     
     def test_user_login(self):

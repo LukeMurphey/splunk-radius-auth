@@ -22,8 +22,11 @@ class ClearRadiusCache(SearchCommand):
         self.user = user
         self.test = str(test).strip().lower() not in ["false", "0", "f"]
 
+        self.days_ago = None
+
         try:
-            self.days_ago = int(days_ago)
+            if days_ago is not None:
+                self.days_ago = int(days_ago)
         except ValueError:
             raise ValueError('The "days_ago" parameter must be a valid integer greater than zero')
 
@@ -39,10 +42,17 @@ class ClearRadiusCache(SearchCommand):
 
         # Clear the user if requested
         if self.user is not None:
-            if UserInfo.clearUserInfo(self.user):
-                self.output_results([{'user': self.user, 'message': 'The user record was cleared for the user "' + self.user + '"'}])
+            # Run in test mode if necessary
+            if self.test:
+                if UserInfo.getUserInfo(self.user) is not None:
+                    self.output_results([{'user': self.user, 'message': 'The user record was found and will be cleared for the user "' + self.user + '" if not run in test mode'}])
+                else:
+                    self.output_results([{'user': self.user, 'message': 'No user record was found for the user "' + self.user + '"'}])
             else:
-                self.output_results([{'user': self.user, 'message': 'No user record was found for the user "' + self.user + '"'}])
+                if UserInfo.clearUserInfo(self.user):
+                    self.output_results([{'user': self.user, 'message': 'The user record was cleared for the user "' + self.user + '"'}])
+                else:
+                    self.output_results([{'user': self.user, 'message': 'No user record was found for the user "' + self.user + '"'}])
 
         # Clear the cache by date if requested
         if self.days_ago is not None:
