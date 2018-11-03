@@ -6,6 +6,8 @@ import re
 import tempfile
 import shutil
 import time
+import errno
+import HTMLTestRunner
 from StringIO import StringIO
 import os
 
@@ -850,6 +852,18 @@ class TestMainAuthMethods(RadiusAuthAppTest):
                                           "--status=success --userInfo=;jdoe;John Doe;admin:power --userInfo=;alincoln;Abraham Lincoln;power"]:
             self.fail("The output of getUsers() was not what was expected: " + out.getvalue().strip())
 
+if __name__ == "__main__":
+    report_path = os.path.join('..', os.environ.get('TEST_OUTPUT', 'tmp/test_report.html'))
 
-if __name__ == '__main__':
-    unittest.main(testRunner= unittest.TextTestRunner(verbosity=2))
+    # Make the test directory
+    try:
+        os.makedirs(os.path.dirname(report_path))
+    except OSError as exception:
+        if exception.errno != errno.EEXIST:
+            raise
+
+    with open(report_path, 'w') as report_file:
+        test_runner = HTMLTestRunner.HTMLTestRunner(
+            stream=report_file
+        )
+        unittest.main(testRunner=test_runner)

@@ -31,6 +31,8 @@
 	<target name="start_test_radius_server">
 		<exec failonerror="true" dir="${basedir}/tests/freeradius_docker_image" executable="docker">
 			<arg value="run"/>
+			<arg value="--rm"/>
+			<arg value="-d"/>
 			<arg value="-p"/>
 			<arg value="1812:1812/udp"/>
 			<arg value="radius-test"/>
@@ -70,5 +72,10 @@
 			<arg value="${docker_id}"/>
 		</exec>
 	</target>
+
+    <!-- ================================= 
+          target: test
+         ================================= -->
+    <target name="test" description="Deploys the application, builds the Docker image, and runs tests" depends="docker_stop,docker_build,start_test_radius_server,skip_bump,deploy,test.run_unit,docker_stop" />
 	
 </project>
