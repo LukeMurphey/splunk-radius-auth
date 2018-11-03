@@ -46,17 +46,30 @@ class RadiusAuthAppTest(unittest.TestCase):
                 d = r.groupdict()
                 settings[ d["key"] ] = d["value"]
         
-        self.username = self.changeEncodingToAscii(settings["value.test.radius.username"])
-        self.password = self.changeEncodingToAscii(settings["value.test.radius.password"])
-        self.server = self.changeEncodingToAscii(settings["value.test.radius.server"])
-        self.secret = self.changeEncodingToAscii(settings["value.test.radius.secret"])
-        self.identifier = self.changeEncodingToAscii(settings.get("value.test.radius.identifier", "Splunk"))
-        self.vendor_code = self.toInt(settings.get("value.test.radius.vendor_code", None))
-        self.roles_attribute_id = self.toInt(settings.get("value.test.radius.roles_attribute_id", None))            
-        self.roles_key = self.changeEncodingToAscii(settings.get("value.test.radius.roles_key", "(0, 1)"))
+        self.username = self.changeEncodingToAscii(settings.get("value.test.radius.username", self.username))
+        self.password = self.changeEncodingToAscii(settings.get("value.test.radius.password", self.password))
+        self.server = self.changeEncodingToAscii(settings.get("value.test.radius.server", self.server))
+        self.secret = self.changeEncodingToAscii(settings.get("value.test.radius.secret", self.secret))
+        self.identifier = self.changeEncodingToAscii(settings.get("value.test.radius.identifier", self.identifier))
+        self.vendor_code = self.toInt(settings.get("value.test.radius.vendor_code", self.vendor_code))
+        self.roles_attribute_id = self.toInt(settings.get("value.test.radius.roles_attribute_id", self.roles_attribute_id))            
+        self.roles_key = self.changeEncodingToAscii(settings.get("value.test.radius.roles_key", self.roles_key))
         
     def setUp(self):
-        self.loadConfig()
+        self.username = None
+        self.password = None
+        self.server = None
+        self.secret = None
+        self.identifier = "Splunk"
+        self.vendor_code = None
+        self.roles_attribute_id = None
+        self.roles_key = "(0, 1)"
+
+        self.loadConfig(os.path.join("..", "default.properties"))
+        self.loadConfig(os.path.join("..", "local.properties"))
+
+        print self.username, self.password, self.server, self.secret
+
         self.tmp_dir = tempfile.mkdtemp( prefix="splunk_radius_auth_test_" )
         
     def tearDown(self):
