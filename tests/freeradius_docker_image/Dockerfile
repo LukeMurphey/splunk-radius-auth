@@ -22,4 +22,4 @@ RUN cat /tmp/dictionary >> /etc/freeradius/3.0/dictionary
 # Expose the RADIUS server
 EXPOSE 1812/udp
 
-ENTRYPOINT ["/usr/sbin/freeradius","-X"]
+ENTRYPOINT ["/usr/sbin/freeradius", "-X"]
