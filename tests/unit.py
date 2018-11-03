@@ -66,7 +66,12 @@ class RadiusAuthAppTest(unittest.TestCase):
         self.roles_key = "(0, 1)"
 
         self.loadConfig(os.path.join("..", "default.properties"))
-        self.loadConfig(os.path.join("..", "local.properties"))
+
+        try:
+            self.loadConfig(os.path.join("..", "local.properties"))
+        except IOError:
+            # local file doesn't exist, but that is ok
+            pass
 
         print self.username, self.password, self.server, self.secret
 
