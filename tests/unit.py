@@ -70,10 +70,8 @@ class RadiusAuthAppTest(unittest.TestCase):
         try:
             self.loadConfig(os.path.join("..", "local.properties"))
         except IOError:
-            # local file doesn't exist, but that is ok
+            # local file doesn't exist, but that is ok since we will use the defaults
             pass
-
-        print self.username, self.password, self.server, self.secret
 
         self.tmp_dir = tempfile.mkdtemp( prefix="splunk_radius_auth_test_" )
         
