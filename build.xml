@@ -74,8 +74,8 @@
 	</target>
 
     <!-- ================================= 
-          target: test
+          target: test.deploy_and_run_unit
          ================================= -->
-    <target name="test" description="Deploys the application, builds the Docker image, and runs tests" depends="docker_stop,docker_build,start_test_radius_server,skip_bump,deploy,test.run_unit,docker_stop" />
-	
+    <target name="test.deploy_and_run_unit" description="Deploys the application and runs the unit tests" depends="docker_build,start_test_radius_server,skip_bump,deploy,test.run_unit,docker_stop" />
+
 </project>
