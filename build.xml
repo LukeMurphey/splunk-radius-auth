@@ -74,8 +74,13 @@
 	</target>
 
     <!-- ================================= 
-          target: test.deploy_and_run_unit
+          target: test.setup
          ================================= -->
-    <target name="test.deploy_and_run_unit" description="Deploys the application and runs the unit tests" depends="docker_build,start_test_radius_server,skip_bump,deploy,test.run_unit,docker_stop" />
+    <target name="test.setup" depends="initialize_properties,docker_build,start_test_radius_server,skip_bump"/>
+
+    <!-- ================================= 
+          target: test.tear_down
+         ================================= -->
+    <target name="test.tear_down" depends="docker_stop" />
 
 </project>
