@@ -65,7 +65,7 @@ USER_INFO   = "--userInfo"
 APP_NAME    = "radius_auth"
 CONF_FILE   = "radius.conf"
 
-class ConfFile():
+class ConfFile(dict):
     """
     Provides a mechanism for reading Splunk conf files. This is necessary because Splunk does not give the user auth scripts an session ID.
     Therefore, we cannot access the REST APIs. However, we can access the file-system. Thus, we will read the files from the file-system
@@ -234,7 +234,7 @@ class ConfFile():
         # Read in and parse the configuration file
         try:
             # Open the file
-            file_handle = open(file_path, 'rb')
+            file_handle = open(file_path, 'r')
             
             # Read in all of the lines
             lines = self.readlines(file_handle)
@@ -305,7 +305,10 @@ class ConfFile():
             if stanza not in merged:
                 merged[stanza] = conf_overriding[stanza]
             else:
-                merged[stanza] = dict(merged[stanza].items() + conf_overriding[stanza].items())
+                d = merged[stanza].copy()
+                d.update(conf_overriding[stanza])
+                merged[stanza] = d
+                # merged[stanza] = dict(merged[stanza].items() + conf_overriding[stanza].items())
         
         # Create the resulting instance
         ci = ConfFile()
@@ -425,8 +428,22 @@ class UserInfo():
         else:
             lastLoginTime = self.lastLoginTime
 
-        return hashlib.sha224(self.__str__() + ":" + str(lastLoginTime)).hexdigest()
+        return hashlib.sha224(UserInfo.stringToBytes(self.__str__() + ":" + str(lastLoginTime))).hexdigest()
     
+    @staticmethod
+    def stringToBytes(s):
+        """
+        Convert the given string to bytes.
+        
+        Arguments:
+        s -- The string to convert
+        """
+
+        if sys.version_info.major >= 3:
+            return bytearray(s, 'utf-8')
+        else:
+            return s
+
     @staticmethod
     def getUserInfoDirectory(make_if_non_existent = True):
         """
@@ -487,7 +504,7 @@ class UserInfo():
             directory = UserInfo.getUserInfoDirectory(False)
 
         # Get the unique identifier associated with the username
-        uid = hashlib.md5(username).hexdigest()
+        uid = hashlib.md5(UserInfo.stringToBytes(username)).hexdigest()
 
         # Get the full path
         full_path = os.path.join(directory, uid + ".json")
@@ -515,7 +532,7 @@ class UserInfo():
             directory = UserInfo.getUserInfoDirectory(False)
 
         # Get the unique identifier associated with the username
-        uid = hashlib.md5(username).hexdigest()
+        uid = hashlib.md5(UserInfo.stringToBytes(username)).hexdigest()
 
         # Get the full path
         full_path = os.path.join(directory, uid + ".json")
@@ -618,7 +635,7 @@ class UserInfo():
             directory = UserInfo.getUserInfoDirectory(make_dirs_if_non_existent)
             
         # Get the unique identifier associated with the username
-        uid = hashlib.md5(self.username).hexdigest()
+        uid = hashlib.md5(UserInfo.stringToBytes(self.username)).hexdigest()
             
         # Determine if the user info object already exists
         files = os.listdir(directory)
@@ -704,7 +721,7 @@ class UserInfo():
             directory = UserInfo.getUserInfoDirectory()
             
         # Hash the username to derive the file name
-        file_name = hashlib.md5(username).hexdigest() + ".json"
+        file_name = hashlib.md5(UserInfo.stringToBytes(username)).hexdigest() + ".json"
         
         # Try to load the file
         path = os.path.join(directory, file_name)
@@ -754,7 +771,7 @@ class RadiusAuth():
     RADIUS_BACKUP_SECRET = 'backup_server_secret'
     
     # This regular expression splits up a list of roles
-    ROLES_SPLIT  = re.compile("[:,]*")
+    ROLES_SPLIT  = re.compile("[:,]+")
     
     # Regular expression for parsing the roles_key
     ROLES_KEY_PARSE_REGEX = re.compile("(?P<role_vendor_code>[0-9]+)([^,]*?,[^,]*?(?P<role_attribute_id>[0-9]+))?")
@@ -1097,14 +1114,15 @@ class RadiusAuth():
             
         # Open the file and get the output
         try:
-            with open(file_path, "rb") as csv_file_h:
+
+            with open(file_path) as csv_file_h:
                 csv_reader = csv.reader(csv_file_h)
-                
+    
                 row_number = 0
                 
                 # Add each user entry to the role map
                 for row in csv_reader:
-                    
+
                     # Skip the header row
                     if row_number == 0: 
                         pass 
@@ -1126,7 +1144,7 @@ class RadiusAuth():
                         # Get the username and the raw roles
                         row_username = row[RadiusAuth.ROLES_MAP_USERNAME].strip().lower()
                         row_roles_str = row[RadiusAuth.ROLES_MAP_ROLES]
-                            
+                        
                         # Split up the roles and put the information in the list
                         user_role_map[row_username] = self.splitRoles(row_roles_str)
                         
@@ -1138,6 +1156,7 @@ class RadiusAuth():
                     row_number = row_number + 1
                     
         except IOError:
+
             # File could not be opened. This most often happens because the file does not exist because roles maps are not being used.
             return None
         
@@ -1472,4 +1491,4 @@ if __name__ == "__main__":
     #elif method == "getSearchFilter":
         #getSearchFilter(args)
     else:
-        print "ERROR unknown function call: " + method
+        print("ERROR unknown function call: ", method)

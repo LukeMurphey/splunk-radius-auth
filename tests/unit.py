@@ -7,9 +7,12 @@ import tempfile
 import shutil
 import time
 import errno
-import HTMLTestRunner
-from StringIO import StringIO
 import os
+
+try:
+    from StringIO import StringIO
+except:
+    from io import StringIO
 
 sys.path.append("../src/bin")
 
@@ -24,8 +27,10 @@ class RadiusAuthAppTest(unittest.TestCase):
             return int(str_int)
     
     def changeEncodingToAscii(self, s):
-        if s is not None:
+        if s is not None and hasattr(s, 'encode'):
             return s.encode("ascii")
+        elif s is not None:
+            return s.decode("ascii", "replace")
         else:
             return s
     
@@ -86,9 +91,9 @@ class TestConfFile(RadiusAuthAppTest):
         
         d = cf["default"]
         
-        self.assertEquals(d['server'], "auth.server1.acme.com")
-        self.assertEquals(d['secret'], "changeme")
-        self.assertEquals(d['identifier'], "server1")
+        self.assertEqual(d['server'], "auth.server1.acme.com")
+        self.assertEqual(d['secret'], "changeme")
+        self.assertEqual(d['identifier'], "server1")
         
     def test_load_file_bom(self):
         
@@ -360,7 +365,7 @@ class TestRadiusAuth(RadiusAuthAppTest):
             bad_file = tempfile.NamedTemporaryFile(delete=False, suffix="_roles_map.csv")
             
             # Write out some junk in the directory and see if it handled well (we will write a CSV since it isn't valid JSON)
-            bad_file.write("This is just some stuff that isn't a valid CSV file")
+            bad_file.write(b"This is just some stuff that isn't a valid CSV file")
             bad_file.close()
             
             # Try to load the file
@@ -878,8 +883,4 @@ if __name__ == "__main__":
         if exception.errno != errno.EEXIST:
             raise
 
-    with open(report_path, 'w') as report_file:
-        test_runner = HTMLTestRunner.HTMLTestRunner(
-            stream=report_file
-        )
-        unittest.main(testRunner=test_runner)
+    unittest.main()
