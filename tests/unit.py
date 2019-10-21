@@ -8,6 +8,7 @@ import shutil
 import time
 import errno
 import os
+import six
 
 try:
     from StringIO import StringIO
@@ -16,7 +17,7 @@ except:
 
 sys.path.append("../src/bin")
 
-from radius_auth import UserInfo, RadiusAuth, userLogin, getUserInfo, getUsers, ConfFile, CONF_FILE, USERNAME, PASSWORD, SUCCESS
+from radius_auth import UserInfo, RadiusAuth, userLogin, getUserInfo, getUsers, ConfFile, CONF_FILE, USERNAME, PASSWORD, SUCCESS, bytesToString, stringToBytes
 
 class RadiusAuthAppTest(unittest.TestCase):
     
@@ -29,8 +30,10 @@ class RadiusAuthAppTest(unittest.TestCase):
     def changeEncodingToAscii(self, s):
         if s is not None and hasattr(s, 'encode'):
             return s.encode("ascii")
+        elif s is not None and isinstance(s, bytes):
+            return s
         elif s is not None:
-            return s.decode("ascii", "replace")
+            return bytes(s, 'ascii')
         else:
             return s
     
@@ -138,7 +141,7 @@ class TestRadiusAuth(RadiusAuthAppTest):
     
     def test_auth_valid(self):
         
-        ra = RadiusAuth(self.server, self.secret.encode("ascii"), self.identifier)
+        ra = RadiusAuth(self.server, self.secret, self.identifier)
         
         result = ra.authenticate(self.username, self.password, update_user_info=False)
         
@@ -231,21 +234,21 @@ class TestRadiusAuth(RadiusAuthAppTest):
         # Write out a roles map with 'nologin' for the user
         roles = ["admin", "power", "nologin"]
         
-        roles_map_file_path = self.write_auth_csv( self.username, roles )
+        roles_map_file_path = self.write_auth_csv(self.username, roles)
         try:
             # Try authentication
             ra = RadiusAuth(self.server, self.secret, self.identifier, self.roles_key, vendor_code=self.vendor_code, roles_attribute_id=self.roles_attribute_id)
             
             result = ra.authenticate(self.username, self.password, update_user_info=True, directory=self.tmp_dir, roles_map_file_path=roles_map_file_path)
-            
+
             self.assertFalse(result)
-            users = UserInfo.getAllUsers( self.tmp_dir )
+            users = UserInfo.getAllUsers(self.tmp_dir)
             
-            self.assertEquals( len(users), 1)
+            self.assertEquals(len(users), 1)
             
             # Get the user
             user = users[0]
-            self.assertEquals( user.username, self.username)
+            self.assertEquals(user.username, bytesToString(self.username))
             
             # Make sure the nologin role exists:
             if 'nologin' not in user.roles:
@@ -315,7 +318,7 @@ class TestRadiusAuth(RadiusAuthAppTest):
         
     def test_auth_backup(self):
         
-        ra = RadiusAuth("127.0.0.1", "invalid_password", self.identifier, backup_server=self.server, backup_server_secret=self.secret)
+        ra = RadiusAuth("127.0.0.1", b"invalid_password", self.identifier, backup_server=self.server, backup_server_secret=self.secret)
         
         result = ra.authenticate(self.username, self.password, update_user_info=False)
         
@@ -433,22 +436,27 @@ class TestRadiusAuth(RadiusAuthAppTest):
         
     def write_auth_csv(self, username, roles):
         
-        csv_file = tempfile.NamedTemporaryFile(delete=False, suffix="_roles_map.csv")
+        csv_file = tempfile.NamedTemporaryFile(delete=False, suffix="_roles_map.csv", mode='w')
         
         with csv_file:
             
-            csv_writer = csv.writer( csv_file )
+            csv_writer = csv.writer(csv_file)
             
             csv_writer.writerow( ["username", "roles"] )
-            csv_writer.writerow( [username, ":".join(roles)] )
+            csv_writer.writerow( [bytesToString(username), ":".join(roles)] )
         
         return csv_file.name
         
     def test_auth_auth_info_roles_override(self):
+        """
+        This ensures that the CSV file containing the overrides for the roles is correctly loaded and used.
+
+        This tests the underlying functions getRolesFromLookup() and loadRolesMap() 
+        """
         
         roles = ["admin", "power", "can_delete"]
         
-        roles_map_file_path = self.write_auth_csv( self.username, roles )
+        roles_map_file_path = self.write_auth_csv(self.username, roles)
         
         try:
             ra = RadiusAuth(self.server, self.secret, self.identifier, vendor_code=self.vendor_code, roles_attribute_id=self.roles_attribute_id)
@@ -456,34 +464,34 @@ class TestRadiusAuth(RadiusAuthAppTest):
             result = ra.authenticate(self.username, self.password, update_user_info=True, directory=self.tmp_dir, roles_map_file_path=roles_map_file_path)
             
             self.assertTrue(result)
-            users = UserInfo.getAllUsers( self.tmp_dir )
+            users = UserInfo.getAllUsers(self.tmp_dir)
             
-            self.assertEquals( len(users), 1)
+            self.assertEquals(len(users), 1)
             
             # Get the user
             user = users[0]
-            self.assertTrue( user.username, self.username)
+            self.assertTrue(user.username, self.username)
             
             # Make sure the roles exist:
             if 'can_delete' not in user.roles:
-                self.fail("can_delete not in the roles (%s)" % (user.roles) )
+                self.fail("can_delete not in the roles (%s)" % (user.roles))
                 
             if 'admin' not in user.roles:
-                self.fail("admin not in the roles (%s)" % (user.roles) )
+                self.fail("admin not in the roles (%s)" % (user.roles))
                 
             if 'power' not in user.roles:
-                self.fail("power not in the roles (%s)" % (user.roles) )
+                self.fail("power not in the roles (%s)" % (user.roles))
                 
-                self.assertEquals( len(user.roles), 3 )
+                self.assertEquals(len(user.roles), 3)
                 
         finally:
-            os.remove( roles_map_file_path )
+            os.remove(roles_map_file_path)
         
     def test_auth_auth_info_roles_override_caps_insensitive(self):
         
         roles = ["admin", "power", "can_delete"]
         
-        roles_map_file_path = self.write_auth_csv( self.username.upper(), roles )
+        roles_map_file_path = self.write_auth_csv(self.username.upper(), roles)
         
         try:
             ra = RadiusAuth(self.server, self.secret, self.identifier, vendor_code=self.vendor_code, roles_attribute_id=self.roles_attribute_id)
@@ -491,28 +499,28 @@ class TestRadiusAuth(RadiusAuthAppTest):
             result = ra.authenticate(self.username, self.password, update_user_info=True, directory=self.tmp_dir, roles_map_file_path=roles_map_file_path)
             
             self.assertTrue(result)
-            users = UserInfo.getAllUsers( self.tmp_dir )
+            users = UserInfo.getAllUsers(self.tmp_dir)
             
-            self.assertEquals( len(users), 1)
+            self.assertEquals(len(users), 1)
             
             # Get the user
             user = users[0]
-            self.assertTrue( user.username, self.username)
+            self.assertTrue(user.username, self.username)
             
             # Make sure the roles exist:
             if 'can_delete' not in user.roles:
-                self.fail("can_delete not in the roles (%s)" % (user.roles) )
+                self.fail("can_delete not in the roles (%s)" % (user.roles))
                 
             if 'admin' not in user.roles:
-                self.fail("admin not in the roles (%s)" % (user.roles) )
+                self.fail("admin not in the roles (%s)" % (user.roles))
                 
             if 'power' not in user.roles:
-                self.fail("power not in the roles (%s)" % (user.roles) )
+                self.fail("power not in the roles (%s)" % (user.roles))
                 
-                self.assertEquals( len(user.roles), 3 )
+                self.assertEquals(len(user.roles), 3)
                 
         finally:
-            os.remove( roles_map_file_path )
+            os.remove(roles_map_file_path)
         
     def test_load_conf(self):
         
@@ -794,17 +802,17 @@ class TestMainAuthMethods(RadiusAuthAppTest):
     def test_user_login(self):
         
         # Make the fake Splunk directories
-        os.makedirs( os.path.join( self.tmp_dir, "default") )
-        os.makedirs( os.path.join( self.tmp_dir, "local") )
+        os.makedirs(os.path.join(self.tmp_dir, "default"))
+        os.makedirs(os.path.join( self.tmp_dir, "local"))
         
         # Make the default conf
-        fp = open( os.path.join( self.tmp_dir, "default", CONF_FILE), "w" )
+        fp = open(os.path.join( self.tmp_dir, "default", CONF_FILE), "w")
         fp.write("[default]\nidentifier=Splunk")
         fp.close()
         
         # Make the local conf
-        fp = open( os.path.join( self.tmp_dir, "local", CONF_FILE), "w" )
-        fp.write( "[default]\nserver=%s\n\nsecret=%s\n" % (self.server, self.secret) )
+        fp = open(os.path.join( self.tmp_dir, "local", CONF_FILE), "w")
+        fp.write("[default]\nserver=%s\n\nsecret=%s\n" % (self.server, self.secret))
         fp.close()
         
         # Redirect output to a string so that we can test it
@@ -816,17 +824,17 @@ class TestMainAuthMethods(RadiusAuthAppTest):
         args[PASSWORD] = self.password
         
         # Try to login
-        userLogin( args, out, self.tmp_dir )
+        userLogin(args, out, self.tmp_dir)
         
         # Test the output
-        self.assertEquals( out.getvalue().strip(), SUCCESS)
+        self.assertEquals(out.getvalue().strip(), SUCCESS)
         
     def test_get_user_info(self):
         
         # Create a user-info object to load
-        user_info = UserInfo( self.username, "John Doe", ["admin", "power"])
+        user_info = UserInfo(self.username, "John Doe", ["admin", "power"])
         
-        self.assertTrue( user_info.save( self.tmp_dir ), "File was not saved properly" )
+        self.assertTrue(user_info.save( self.tmp_dir ), "File was not saved properly")
         
         # Redirect output to a string so that we can test it
         out = StringIO()
@@ -836,10 +844,10 @@ class TestMainAuthMethods(RadiusAuthAppTest):
         args[USERNAME] = self.username
         
         # Try to get the user info
-        getUserInfo( args, out, self.tmp_dir )
+        getUserInfo(args, out, self.tmp_dir)
         
         # Test the output
-        self.assertEquals( out.getvalue().strip(), "--status=success --userInfo=;" + self.username +  ";John Doe;admin:power"  )
+        self.assertEquals(out.getvalue().strip(), "--status=success --userInfo=;" + bytesToString(self.username) +  ";John Doe;admin:power")
         
     def test_get_user_info_no_directory(self):
         

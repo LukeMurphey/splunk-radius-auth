@@ -65,6 +65,32 @@ USER_INFO   = "--userInfo"
 APP_NAME    = "radius_auth"
 CONF_FILE   = "radius.conf"
 
+def stringToBytes(s):
+    """
+    Convert the given string to bytes.
+    
+    Arguments:
+    s -- The string to convert
+    """
+
+    if sys.version_info.major >= 3:
+        if s is not None and isinstance(s, bytes):
+            return s
+        elif s is not None:
+            return bytearray(s, 'utf-8')
+        else:
+            return None
+    else:
+        return s
+
+def bytesToString(b):
+    if b is None:
+        return None
+    elif isinstance(b, bytes):
+        return b.decode('utf-8')
+    else:
+        return b
+
 class ConfFile(dict):
     """
     Provides a mechanism for reading Splunk conf files. This is necessary because Splunk does not give the user auth scripts an session ID.
@@ -349,6 +375,10 @@ class UserInfo():
         else:
             self.roles = roles[:]
 
+        # Convert the roles to strings
+        # TODO
+        # self.roles = [self.bytesToString(role) for role in self.roles]
+
         # Set up the last login time
         self.lastLoginTime = lastLoginTime
 
@@ -428,21 +458,7 @@ class UserInfo():
         else:
             lastLoginTime = self.lastLoginTime
 
-        return hashlib.sha224(UserInfo.stringToBytes(self.__str__() + ":" + str(lastLoginTime))).hexdigest()
-    
-    @staticmethod
-    def stringToBytes(s):
-        """
-        Convert the given string to bytes.
-        
-        Arguments:
-        s -- The string to convert
-        """
-
-        if sys.version_info.major >= 3:
-            return bytearray(s, 'utf-8')
-        else:
-            return s
+        return hashlib.sha224(stringToBytes(self.__str__() + ":" + str(lastLoginTime))).hexdigest()
 
     @staticmethod
     def getUserInfoDirectory(make_if_non_existent = True):
@@ -504,7 +520,7 @@ class UserInfo():
             directory = UserInfo.getUserInfoDirectory(False)
 
         # Get the unique identifier associated with the username
-        uid = hashlib.md5(UserInfo.stringToBytes(username)).hexdigest()
+        uid = hashlib.md5(stringToBytes(username)).hexdigest()
 
         # Get the full path
         full_path = os.path.join(directory, uid + ".json")
@@ -532,7 +548,7 @@ class UserInfo():
             directory = UserInfo.getUserInfoDirectory(False)
 
         # Get the unique identifier associated with the username
-        uid = hashlib.md5(UserInfo.stringToBytes(username)).hexdigest()
+        uid = hashlib.md5(stringToBytes(username)).hexdigest()
 
         # Get the full path
         full_path = os.path.join(directory, uid + ".json")
@@ -584,16 +600,15 @@ class UserInfo():
         # Return the deleted items
         return deleted
 
-
     def toDict(self):
         """
         Convert the user-info to a dictionary. Useful for converting user-info objects from JSON files.
         """
         
         d = {}
-        
-        d['username'] = self.username
-        d['realname'] = self.realname
+
+        d['username'] = bytesToString(self.username)
+        d['realname'] = bytesToString(self.realname)
         d['roles'] = self.roles
         d['lastLoginTime'] = self.lastLoginTime
         
@@ -635,7 +650,7 @@ class UserInfo():
             directory = UserInfo.getUserInfoDirectory(make_dirs_if_non_existent)
             
         # Get the unique identifier associated with the username
-        uid = hashlib.md5(UserInfo.stringToBytes(self.username)).hexdigest()
+        uid = hashlib.md5(stringToBytes(self.username)).hexdigest()
             
         # Determine if the user info object already exists
         files = os.listdir(directory)
@@ -672,7 +687,7 @@ class UserInfo():
     @staticmethod
     def loadFile(path):
         """
-        Load the user-info from the given file.
+        Load the user-info from the given JSON file.
         
         Argument:
         path -- The path to the file to load
@@ -685,7 +700,7 @@ class UserInfo():
             fp = open(path)
             
             user_dict = json.load(fp)
-            
+
             # Create the class instance
             username = user_dict["username"]
             realname = user_dict.get("realname", None)
@@ -721,7 +736,7 @@ class UserInfo():
             directory = UserInfo.getUserInfoDirectory()
             
         # Hash the username to derive the file name
-        file_name = hashlib.md5(UserInfo.stringToBytes(username)).hexdigest() + ".json"
+        file_name = hashlib.md5(stringToBytes(username)).hexdigest() + ".json"
         
         # Try to load the file
         path = os.path.join(directory, file_name)
@@ -800,18 +815,18 @@ class RadiusAuth():
         user_roles_map -- A dictionary mapping users to roles
         """
         
-        self.server               = server
-        self.secret               = secret
-        self.identifier           = identifier
+        self.server = server
+        self.secret = secret
+
+        self.identifier = identifier
         
-        self.backup_server        = backup_server
+        self.backup_server = backup_server
         self.backup_server_secret = backup_server_secret
         
         if default_roles is not None:
             self.default_roles = default_roles[:]
         else:
             self.default_roles = None
-        
         
         # Set up the key that we will use to obtain the roles information
         self.roles_key = roles_key
@@ -977,13 +992,13 @@ class RadiusAuth():
         try:
             roles_attribute_id = int(roles_attribute_id_tmp)
         except ValueError:
-            logger.warn("The roles attribute is not a valid integer (is %s)" % (roles_attribute_id_tmp))
+            logger.warning("The roles attribute is not a valid integer (is %s)" % (roles_attribute_id_tmp))
             roles_attribute_id = RadiusAuth.DEFAULT_RADIUS_ROLE_ATTRIBUTE_ID
             
         try:
             vendor_code = int(vendor_code_tmp)
         except ValueError:
-            logger.warn("The vendor code is not a valid integer (is %s)" % (vendor_code_tmp))
+            logger.warning("The vendor code is not a valid integer (is %s)" % (vendor_code_tmp))
             vendor_code = RadiusAuth.DEFAULT_RADIUS_VENDOR_CODE
         
         self.configure_roles_attribute(self.roles_key, vendor_code, roles_attribute_id)
@@ -1045,7 +1060,10 @@ class RadiusAuth():
         Arguments:
         roles_str -- The string containing a list of roles separated by a comma or colon
         """
-    
+
+        # TODO: 
+        roles_str = bytesToString(roles_str)
+
         if roles_str is not None and roles_str.strip() != "":
             return self.ROLES_SPLIT.split(roles_str)
         
@@ -1123,20 +1141,23 @@ class RadiusAuth():
                 # Add each user entry to the role map
                 for row in csv_reader:
 
+                    # Make sure the values in the row are strings
+                    row = [bytesToString(i) for i in row]
+
                     # Skip the header row
                     if row_number == 0: 
                         pass 
                     
                     # Detect rows with no user name
                     elif len(row) == 0 or len(row[RadiusAuth.ROLES_MAP_USERNAME].strip()) == 0:
-                        logger.warn('Row %i of the "%s" file has no username', row_number, file_path)
+                        logger.warning('Row %i of the "%s" file has no username', row_number, file_path)
                     
                     # Detect rows with no roles
                     elif len(row) == 1 or len(row[RadiusAuth.ROLES_MAP_ROLES].strip()) == 0:
-                        logger.warn('Row %i of the "%s" file has no roles', row_number, file_path)
+                        logger.warning('Row %i of the "%s" file has no roles', row_number, file_path)
                         
                     # Skip the row if it isn't for the given user
-                    elif username is not None and len(row) > 0 and row[RadiusAuth.ROLES_MAP_USERNAME].strip().lower() != username:
+                    elif username is not None and len(row) > 0 and row[RadiusAuth.ROLES_MAP_USERNAME].strip().lower() != bytesToString(username):
                         pass
                     
                     # Load the role information
@@ -1149,7 +1170,7 @@ class RadiusAuth():
                         user_role_map[row_username] = self.splitRoles(row_roles_str)
                         
                         # Stop here if we are filtering the results and have all of the user's we are looking for.
-                        if username is not None and row_username == username:
+                        if username is not None and row_username == bytesToString(username):
                             return user_role_map
                         
                     # Increment the row count      
@@ -1195,7 +1216,7 @@ class RadiusAuth():
                 
         # Find the roles key if it exists
         for k, v in reply.items():
-            
+
             # Try to match the reply attribute based on the vendor code and attribute ID
             if self.vendor_code is not None:
                 try:
@@ -1220,6 +1241,10 @@ class RadiusAuth():
             if roles_str is None and str(k) == str(self.roles_key) and len(v[0].strip()) > 0:
                 roles_str = v
             
+            # Convert the string to a unicode
+            # TODO: 
+            # roles_str = str(roles_str)
+
             # If we found a roles_str, go ahead and split it up
             if roles_str is not None:
                 roles = self.splitRoles(v[0])
@@ -1262,7 +1287,7 @@ class RadiusAuth():
         
         # Send out the message
         logger.debug("Received the following fields upon login: %s" % (", ".join(attrs)))
-    
+
     def perform_auth_request(self, server, secret, username, password):
         """
         Send an authentication request to the given server.
@@ -1275,21 +1300,21 @@ class RadiusAuth():
         """
         
         # Create a new connection to the server
-        srv = Client(server=server, secret=secret, dict=Dictionary(RadiusAuth.getDictionaryFile()))
+        srv = Client(server=server, secret=stringToBytes(secret), dict=Dictionary(RadiusAuth.getDictionaryFile()))
         
         # Create the authentication packet
-        req=srv.CreateAuthPacket(code=pyrad.packet.AccessRequest, User_Name=username, NAS_Identifier=self.identifier)
-        req["User-Password"]=req.PwCrypt(password)
+        req = srv.CreateAuthPacket(code=pyrad.packet.AccessRequest, User_Name=username, NAS_Identifier=self.identifier)
+        req["User-Password"] = req.PwCrypt(password)
         
         try:
             # Send the request
-            reply=srv.SendPacket(req)
-                
+            reply = srv.SendPacket(req)
+            
             return reply
         except Exception as e:
             logger.error("Exception triggered when attempting to contact the RADIUS server %s: %s" % (server, str(e)))
             # I hate swallowing exceptions, but socket tends to throw lots of exceptions for networking
-            # problems that can be ignored. We need to be able to recover
+            # problems that can be ignored. We need to be able to recover.
             return None
     
     def authenticate(self, username, password, update_user_info=True, directory=None, log_reply_items=True, roles_map_file_path=None):
@@ -1312,6 +1337,9 @@ class RadiusAuth():
         
         # Send the authentication request
         reply = self.perform_auth_request(self.server, self.secret, username, password)
+
+        # The rest of the functions assume that username is a string (with the exception of authenticate())
+        username_unicode = bytesToString(username)
         
         # Check the reply
         if reply is not None and reply.code == pyrad.packet.AccessAccept:
@@ -1352,8 +1380,8 @@ class RadiusAuth():
             if update_user_info and (self.roles_key is not None or self.vendor_code is not None):
                 
                 # Try to get the roles from the lookup
-                roles = self.getRolesFromLookup(username, file_path=roles_map_file_path)
-                
+                roles = self.getRolesFromLookup(username_unicode, file_path=roles_map_file_path)
+
                 if roles is None:
                     # Get the roles from the reply
                     roles = self.getRolesFromReply(reply)
@@ -1382,7 +1410,7 @@ def readInputs():
     Read in the inputs from the command-line into a dictionary.
     """
     
-    optlist, args = getopt.getopt(sys.stdin.readlines(), '', ['username=', 'password='])
+    optlist, _ = getopt.getopt(sys.stdin.readlines(), '', ['username=', 'password='])
     
     return_dict = {}
     
