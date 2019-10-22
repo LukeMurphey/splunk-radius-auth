@@ -77,7 +77,7 @@ def stringToBytes(s):
         if s is not None and isinstance(s, bytes):
             return s
         elif s is not None:
-            return bytearray(s, 'utf-8')
+            return bytes(s, 'utf-8')
         else:
             return None
     else:
@@ -334,8 +334,7 @@ class ConfFile(dict):
                 d = merged[stanza].copy()
                 d.update(conf_overriding[stanza])
                 merged[stanza] = d
-                # merged[stanza] = dict(merged[stanza].items() + conf_overriding[stanza].items())
-        
+
         # Create the resulting instance
         ci = ConfFile()
         ci.settings = merged
@@ -374,10 +373,6 @@ class UserInfo():
             self.roles = []
         else:
             self.roles = roles[:]
-
-        # Convert the roles to strings
-        # TODO
-        # self.roles = [self.bytesToString(role) for role in self.roles]
 
         # Set up the last login time
         self.lastLoginTime = lastLoginTime
@@ -977,17 +972,17 @@ class RadiusAuth():
         combined = combined_conf.get("default")
         
         # Initialize the class
-        self.identifier            = combined.get(RadiusAuth.RADIUS_IDENTIFIER, "Splunk")
-        self.server                = combined.get(RadiusAuth.RADIUS_SERVER, None)
-        self.secret                = combined.get(RadiusAuth.RADIUS_SECRET, None)
-        self.backup_server         = combined.get(RadiusAuth.RADIUS_BACKUP_SERVER, None)
-        self.backup_server_secret  = combined.get(RadiusAuth.RADIUS_BACKUP_SECRET, None)
-        self.roles_key             = combined.get(RadiusAuth.ROLES_KEY, None)
-        self.default_roles         = self.splitRoles(combined.get(RadiusAuth.DEFAULT_ROLES, None))
+        self.identifier = combined.get(RadiusAuth.RADIUS_IDENTIFIER, "Splunk")
+        self.server = combined.get(RadiusAuth.RADIUS_SERVER, None)
+        self.secret = combined.get(RadiusAuth.RADIUS_SECRET, None)
+        self.backup_server = combined.get(RadiusAuth.RADIUS_BACKUP_SERVER, None)
+        self.backup_server_secret = combined.get(RadiusAuth.RADIUS_BACKUP_SECRET, None)
+        self.roles_key = combined.get(RadiusAuth.ROLES_KEY, None)
+        self.default_roles = self.splitRoles(combined.get(RadiusAuth.DEFAULT_ROLES, None))
         
         # Get the roles attribute ID and vendor as integers
-        roles_attribute_id_tmp     = combined.get(RadiusAuth.ROLE_ATTRIBUTE, RadiusAuth.DEFAULT_RADIUS_ROLE_ATTRIBUTE_ID)
-        vendor_code_tmp            = combined.get(RadiusAuth.VENDOR_CODE, RadiusAuth.DEFAULT_RADIUS_VENDOR_CODE)
+        roles_attribute_id_tmp = combined.get(RadiusAuth.ROLE_ATTRIBUTE, RadiusAuth.DEFAULT_RADIUS_ROLE_ATTRIBUTE_ID)
+        vendor_code_tmp = combined.get(RadiusAuth.VENDOR_CODE, RadiusAuth.DEFAULT_RADIUS_VENDOR_CODE)
         
         try:
             roles_attribute_id = int(roles_attribute_id_tmp)
@@ -1061,7 +1056,7 @@ class RadiusAuth():
         roles_str -- The string containing a list of roles separated by a comma or colon
         """
 
-        # TODO: 
+        # Convert the roles to a string so that we can run regular expressions against it
         roles_str = bytesToString(roles_str)
 
         if roles_str is not None and roles_str.strip() != "":
@@ -1240,10 +1235,6 @@ class RadiusAuth():
             # Try to match the reply attribute based on the deprecated roles_key
             if roles_str is None and str(k) == str(self.roles_key) and len(v[0].strip()) > 0:
                 roles_str = v
-            
-            # Convert the string to a unicode
-            # TODO: 
-            # roles_str = str(roles_str)
 
             # If we found a roles_str, go ahead and split it up
             if roles_str is not None:
@@ -1298,25 +1289,25 @@ class RadiusAuth():
         username -- The username to authenticate
         password -- The password to check when authenticating
         """
-        
+
         # Create a new connection to the server
         srv = Client(server=server, secret=stringToBytes(secret), dict=Dictionary(RadiusAuth.getDictionaryFile()))
-        
+ 
         # Create the authentication packet
         req = srv.CreateAuthPacket(code=pyrad.packet.AccessRequest, User_Name=username, NAS_Identifier=self.identifier)
         req["User-Password"] = req.PwCrypt(password)
-        
+
         try:
             # Send the request
             reply = srv.SendPacket(req)
-            
+
             return reply
         except Exception as e:
             logger.error("Exception triggered when attempting to contact the RADIUS server %s: %s" % (server, str(e)))
             # I hate swallowing exceptions, but socket tends to throw lots of exceptions for networking
             # problems that can be ignored. We need to be able to recover.
             return None
-    
+
     def authenticate(self, username, password, update_user_info=True, directory=None, log_reply_items=True, roles_map_file_path=None):
         """
         Perform an authentication attempt to the RADIUS server. Return true if the authentication succeeded.
@@ -1336,7 +1327,7 @@ class RadiusAuth():
         self.checkUsernameAndPassword(username, password)
         
         # Send the authentication request
-        reply = self.perform_auth_request(self.server, self.secret, username, password)
+        reply = self.perform_auth_request(stringToBytes(self.server), stringToBytes(self.secret), username, password)
 
         # The rest of the functions assume that username is a string (with the exception of authenticate())
         username_unicode = bytesToString(username)
@@ -1361,7 +1352,7 @@ class RadiusAuth():
             
             # Send the authentication request
             reply = self.perform_auth_request(self.backup_server, secret, username, password)
-            
+
             # Check the reply
             if reply is not None and reply.code == pyrad.packet.AccessAccept:
                 auth_suceeded = True
