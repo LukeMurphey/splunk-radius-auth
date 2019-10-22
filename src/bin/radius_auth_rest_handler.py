@@ -582,9 +582,9 @@ class RadiusAuthRestHandler(admin.MConfigHandler):
             # Setup the authentication script
             self.configureAuthenticationScript(not disabled)
             
-        except admin.NotFoundException, e:
+        except admin.NotFoundException as e:
             raise e
-        except Exception, e:
+        except Exception as e:
             logger.exception("Exception generated while performing edit")
             
             raise e
