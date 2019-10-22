@@ -221,7 +221,7 @@ class ConfFile(dict):
                 if r is not None:
                     stanza = r.groups()[0]
                 else:
-                    raise Exception("Conf file contained an invalid stanza: %l" % (l))
+                    raise Exception("Conf file contained an invalid stanza: %d" % (l))
                 
             # Process the fields if they appear to be so
             elif line.find("=") > 0:
@@ -289,7 +289,10 @@ class ConfFile(dict):
         return ConfFile.merge(self, other)
 
     def __iter__(self):
-        return self.settings.itervalues()
+        try:
+            return self.settings.itervalues()
+        except AttributeError:
+            return self.settings.values()
     
     def get(self, name, default = None):
         if name in self.settings:
