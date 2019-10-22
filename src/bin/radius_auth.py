@@ -99,7 +99,7 @@ class ConfFile(dict):
     """
     
     # This regular expression parse out the stanza name
-    STANZA_REGEX = re.compile("^[[]([^]]*)")
+    STANZA_REGEX = re.compile("^[\\[]([^]]*)")
     
     def __init__(self, file_path = None):
         
