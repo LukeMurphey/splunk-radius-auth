@@ -1310,6 +1310,8 @@ class RadiusAuth():
             # I hate swallowing exceptions, but socket tends to throw lots of exceptions for networking
             # problems that can be ignored. We need to be able to recover.
             return None
+        finally:
+            srv._CloseSocket()
 
     def authenticate(self, username, password, update_user_info=True, directory=None, log_reply_items=True, roles_map_file_path=None):
         """
