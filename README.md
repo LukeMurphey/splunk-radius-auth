@@ -1,3 +1,5 @@
+I support this app in my free-time and at my own expense. Please consider offering a donation in order to promote continued development. [You can donate on Paypal.](https://www.paypal.com/donate?business=MQSKTS3W7LUTY&item_name=Support+continued+development+of+Splunk+apps&currency_code=USD)
+
 This app allows Splunk to authenticate users based on a RADIUS server.
 
 # How do I use the app?
